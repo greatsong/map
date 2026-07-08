@@ -64,6 +64,12 @@
   .bar2 .bf{height:100%;background:linear-gradient(90deg,var(--gold),var(--accent));border-radius:99px;transition:width .4s;}
   .bar2 .bc{width:16px;text-align:right;font-weight:800;color:var(--accent);}
   .none2{font-size:.7rem;color:#c3b48f;}
+  #stats{cursor:pointer;} #stats:hover{background:rgba(255,255,255,.95);}
+  .chips3{display:flex;flex-wrap:wrap;gap:4px 6px;}
+  .chip3{font-size:.74rem;font-weight:700;color:var(--text);background:rgba(232,147,12,.10);
+    border:1px solid var(--border);border-radius:99px;padding:2px 9px;}
+  .chip3 b{color:var(--accent);}
+  .sHint{font-size:.64rem;color:#B9A97F;margin-top:8px;text-align:right;font-weight:700;}
   /* 초대장 */
   #letterBtn{position:absolute;left:18px;top:14px;z-index:6;background:#fff;border:1px solid var(--border);
     border-radius:14px;width:48px;height:48px;font-size:23px;cursor:pointer;box-shadow:0 4px 14px var(--shadow);}
@@ -105,6 +111,7 @@
     <div id="stats">
       <div class="sT">📚 과목</div><div id="subjBars"><div class="none2">집계 중…</div></div>
       <div class="sT two">🎖 교육경력</div><div id="careerBars"><div class="none2">집계 중…</div></div>
+      <div class="sHint" id="sHint"></div>
     </div>
     <button id="letterBtn" title="초대장 열기">💌</button>
     <div id="letter">
@@ -230,16 +237,26 @@ function pumpTicker(){
   clearTimeout(pumpTicker._h); pumpTicker._h=setTimeout(()=>t.classList.remove('show'),1500);
   setTimeout(()=>{ tActive=false; pumpTicker(); }, 1700);
 }
-// 오신 분들 통계(과목·교육경력)
-function renderStats(){
-  const draw=(node,entries)=>{
-    if(!entries.length){ node.innerHTML='<div class="none2">아직 없음</div>'; return; }
-    const m=Math.max(1,...entries.map(e=>e[1]));
-    node.innerHTML=entries.map(([k,v])=>`<div class="bar2"><span class="bn">${k}</span><span class="bt"><span class="bf" style="width:${v/m*100}%"></span></span><span class="bc">${v}</span></div>`).join('');
-  };
-  draw(document.getElementById('subjBars'), Object.entries(SUBJ).sort((a,b)=>b[1]-a[1]).slice(0,6));
-  draw(document.getElementById('careerBars'), CAREER_ORDER.filter(k=>CAREER[k]).map(k=>[k,CAREER[k]]));
+// 오신 분들 통계(과목·교육경력) — 기본은 숫자, 클릭하면 막대 그래프
+let statsExpanded=false;
+function drawBars(node,entries){
+  if(!entries.length){ node.innerHTML='<div class="none2">아직 없음</div>'; return; }
+  const m=Math.max(1,...entries.map(e=>e[1]));
+  node.innerHTML=entries.map(([k,v])=>`<div class="bar2"><span class="bn">${k}</span><span class="bt"><span class="bf" style="width:${v/m*100}%"></span></span><span class="bc">${v}</span></div>`).join('');
 }
+function drawChips(node,entries){
+  if(!entries.length){ node.innerHTML='<div class="none2">아직 없음</div>'; return; }
+  node.innerHTML='<div class="chips3">'+entries.map(([k,v])=>`<span class="chip3">${k} <b>${v}</b></span>`).join('')+'</div>';
+}
+function renderStats(){
+  const subj=Object.entries(SUBJ).sort((a,b)=>b[1]-a[1]);
+  const car=CAREER_ORDER.filter(k=>CAREER[k]).map(k=>[k,CAREER[k]]);
+  const f = statsExpanded ? drawBars : drawChips;
+  f(document.getElementById('subjBars'), subj.slice(0, statsExpanded?8:6));
+  f(document.getElementById('careerBars'), car);
+  document.getElementById('sHint').textContent = statsExpanded ? '(클릭: 숫자로 접기)' : '(클릭: 그래프로 보기)';
+}
+document.getElementById('stats').addEventListener('click', ()=>{ statsExpanded=!statsExpanded; renderStats(); });
 // 초대장(편지)
 document.getElementById('letterBtn').onclick=()=>document.getElementById('letter').classList.add('show');
 document.getElementById('letter').onclick=e=>{ if(e.target.id==='letter') e.currentTarget.classList.remove('show'); };
