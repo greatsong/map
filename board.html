@@ -53,13 +53,43 @@
   #qr img{width:176px;height:176px;display:block;border-radius:8px;}
   #qr .t{margin-top:7px;font-weight:900;font-size:.95rem;}
   #qr .u{font-size:.72rem;color:var(--muted);word-break:break-all;max-width:176px;}
+  /* 오신 분들 통계 */
+  #stats{position:absolute;left:18px;bottom:16px;background:rgba(255,255,255,.85);border:1px solid var(--border);
+    border-radius:16px;padding:12px 14px;backdrop-filter:blur(6px);box-shadow:0 6px 20px var(--shadow);width:216px;z-index:4;}
+  #stats .sT{font-size:.72rem;font-weight:800;color:var(--muted);margin:0 0 5px;}
+  #stats .sT.two{margin-top:12px;}
+  .bar2{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:.74rem;}
+  .bar2 .bn{width:56px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bar2 .bt{flex:1;height:9px;background:rgba(0,0,0,.07);border-radius:99px;overflow:hidden;}
+  .bar2 .bf{height:100%;background:linear-gradient(90deg,var(--gold),var(--accent));border-radius:99px;transition:width .4s;}
+  .bar2 .bc{width:16px;text-align:right;font-weight:800;color:var(--accent);}
+  .none2{font-size:.7rem;color:#c3b48f;}
+  /* 초대장 */
+  #letterBtn{position:absolute;left:18px;top:14px;z-index:6;background:#fff;border:1px solid var(--border);
+    border-radius:14px;width:48px;height:48px;font-size:23px;cursor:pointer;box-shadow:0 4px 14px var(--shadow);}
+  #letterBtn:hover{transform:scale(1.06);}
+  #letter{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+    background:rgba(60,42,12,.55);backdrop-filter:blur(3px);cursor:pointer;padding:20px;}
+  #letter.show{display:flex;animation:fadein .3s;}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  #letter .paper{max-width:600px;background:linear-gradient(180deg,#FFFDF3,#FFF3D8);border:1px solid #E8D9A8;
+    border-radius:22px;padding:44px 48px;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,.45);cursor:default;
+    transform:scale(.9);animation:pop2 .45s cubic-bezier(.2,1.4,.4,1) forwards;}
+  @keyframes pop2{to{transform:scale(1)}}
+  #letter .seal{font-size:56px;}
+  #letter h2{font-size:clamp(1.6rem,3vw,2.2rem);font-weight:900;margin:6px 0 16px;color:#3A2E1A;letter-spacing:-.02em;line-height:1.25;}
+  #letter p{font-size:clamp(1.05rem,1.9vw,1.3rem);color:#5A4A2E;margin:10px 0;line-height:1.65;}
+  #letter p b{color:var(--accent);}
+  #letter .cta{font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:900;color:var(--accent);margin:20px 0 4px;}
+  #letter .sign{color:var(--muted);font-weight:700;margin-top:14px;}
+  #letter .close{color:var(--muted);font-size:.85rem;margin-top:18px;}
   #empty{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);text-align:center;color:var(--muted);
     font-weight:800;font-size:1.1rem;transition:.4s;}
 </style>
 </head>
 <body>
   <div id="head">
-    <h1>🗺️ 우리 학교는 어디에? <span class="a">전국 선생님 지도</span></h1>
+    <h1>🤝 어떤 선생님들과 <span class="a">함께하고 있을까요?</span> 🗺️✨</h1>
     <div class="stat"><span class="n" id="nSchool">0</span><span class="lb">개 학교 접속!</span></div>
     <div class="legend">
       <div class="it"><span class="sw" style="background:var(--c-e)"></span>초 <span class="cnt" id="cE">0</span></div>
@@ -72,6 +102,21 @@
     <div id="pins"></div>
     <div id="empty">📱 오른쪽 QR을 스캔해<br>우리 학교를 지도에 올려주세요!</div>
     <div id="ticker"></div>
+    <div id="stats">
+      <div class="sT">📚 과목</div><div id="subjBars"><div class="none2">집계 중…</div></div>
+      <div class="sT two">🎖 교육경력</div><div id="careerBars"><div class="none2">집계 중…</div></div>
+    </div>
+    <button id="letterBtn" title="초대장 열기">💌</button>
+    <div id="letter">
+      <div class="paper">
+        <div class="seal">💌</div>
+        <h2>당곡고가 선생님을<br>초대합니다</h2>
+        <p><b>AI중점학교 당곡고</b>에서,<br>이런 수업을 학생들과 함께 하는 꿈을<br>꾸시는 선생님들을 모십니다.</p>
+        <div class="cta">내 동료가 돼라!! 🙌</div>
+        <div class="sign">— 당곡고등학교 드림 🌳</div>
+        <div class="close">(바깥 아무 곳이나 누르면 닫혀요)</div>
+      </div>
+    </div>
     <div id="qr">
       <img id="qrimg" alt="QR">
       <div class="t">📱 여기를 스캔!</div>
@@ -101,6 +146,9 @@ let DIST = [];   // 시군구 [{n,p:[[ring...]],bbox,count}]
 let NAT = null, VIEW = null;
 const PINS = [], seen = new Set();
 let count=0, cE=0,cM=0,cH=0;
+const SUBJ={}, CAREER={};
+const CAREER_ORDER=['1년 미만','1~5년','6~10년','11~15년','16~20년','21~25년','26년 이상'];
+const tq=[]; let tActive=false;   // 도착 알림 큐(동시 도착 안 묻히게)
 
 function buildProj(g){
   const mw=mainEl.clientWidth, mh=mainEl.clientHeight;
@@ -168,12 +216,33 @@ function fitChanged(g){
 window.addEventListener('resize', ()=>{ if(VIEW){ VIEW=buildProj(VIEW.g); render(); } });
 
 function bump(el,val){ if(el.textContent===String(val))return; el.textContent=val; el.classList.add('bump'); setTimeout(()=>el.classList.remove('bump'),200); }
-function ticker(name,region,subject,career){
-  const extra=[region, subject, career].filter(Boolean).join(' · ');
+// 도착 알림: 한 번에 여러 명 와도 순차로 다 보여줌(많으면 묶어서)
+function enqueueTicker(items){ tq.push(...items); pumpTicker(); }
+function pumpTicker(){
+  if(tActive || !tq.length) return;
+  tActive=true;
   const t=document.getElementById('ticker');
-  t.innerHTML=`🎉 ${name} <span class="rg">${extra?'· '+extra:''}</span> 합류!`;
-  t.classList.add('show'); clearTimeout(ticker._t); ticker._t=setTimeout(()=>t.classList.remove('show'),3400);
+  let html;
+  if(tq.length>4){ const n=tq.length, f=tq[0].school; tq.length=0; html=`🎉 ${f} 외 ${n-1}곳 동시 합류! 🎉`; }
+  else { const r=tq.shift(); const extra=[r.region,r.subject,r.career].filter(Boolean).join(' · ');
+    html=`🎉 ${r.school} <span class="rg">${extra?'· '+extra:''}</span> 합류!`; }
+  t.innerHTML=html; t.classList.add('show');
+  clearTimeout(pumpTicker._h); pumpTicker._h=setTimeout(()=>t.classList.remove('show'),1500);
+  setTimeout(()=>{ tActive=false; pumpTicker(); }, 1700);
 }
+// 오신 분들 통계(과목·교육경력)
+function renderStats(){
+  const draw=(node,entries)=>{
+    if(!entries.length){ node.innerHTML='<div class="none2">아직 없음</div>'; return; }
+    const m=Math.max(1,...entries.map(e=>e[1]));
+    node.innerHTML=entries.map(([k,v])=>`<div class="bar2"><span class="bn">${k}</span><span class="bt"><span class="bf" style="width:${v/m*100}%"></span></span><span class="bc">${v}</span></div>`).join('');
+  };
+  draw(document.getElementById('subjBars'), Object.entries(SUBJ).sort((a,b)=>b[1]-a[1]).slice(0,6));
+  draw(document.getElementById('careerBars'), CAREER_ORDER.filter(k=>CAREER[k]).map(k=>[k,CAREER[k]]));
+}
+// 초대장(편지)
+document.getElementById('letterBtn').onclick=()=>document.getElementById('letter').classList.add('show');
+document.getElementById('letter').onclick=e=>{ if(e.target.id==='letter') e.currentTarget.classList.remove('show'); };
 
 function addPin(school,region,la,lo,kind){
   const color=kindColor(kind);
@@ -203,25 +272,28 @@ fetch('sigungu.json').then(r=>r.json()).then(d=>{
 async function poll(){
   try{
     const d = await (await fetch(API_URL)).json();
-    let fresh=0, last=null;
+    const freshItems=[];
     (d.schools||[]).forEach(r=>{
       const key=r.school+'@'+r.lat+','+r.lon;
-      if(seen.has(key)) return; seen.add(key); count++; fresh++;
+      if(seen.has(key)) return; seen.add(key); count++;
       const kind = kindOf(r.school);
       addPin(r.school, r.region, +r.lat, +r.lon, kind);
       if(kind==='초')cE++; else if(kind==='중')cM++; else if(kind==='고')cH++;
       const dist = districtOf(+r.lat, +r.lon); if(dist) dist.count++;   // 어느 구인지 색칠용 카운트
-      last=r;
+      if(r.subject) SUBJ[r.subject]=(SUBJ[r.subject]||0)+1;
+      if(r.career)  CAREER[r.career]=(CAREER[r.career]||0)+1;
+      freshItems.push(r);
     });
-    if(fresh){
+    if(freshItems.length){
       document.getElementById('empty').style.opacity=0;
       bump(document.getElementById('nSchool'), count);
       document.getElementById('cE').textContent=cE;
       document.getElementById('cM').textContent=cM;
       document.getElementById('cH').textContent=cH;
       const g=pinsGeo(); if(fitChanged(g)) VIEW=buildProj(g);
-      render();                                  // 지도(구 색칠 반영) + 핀 재배치
-      if(last) ticker(last.school, last.region, last.subject, last.career);
+      render();                                  // 지도(구 색칠) + 핀 재배치
+      renderStats();                             // 과목·경력 통계 갱신
+      enqueueTicker(freshItems);                 // 동시 도착도 순차로 다 알림
     }
   }catch(e){ /* 다음 폴링에서 재시도 */ }
 }
