@@ -144,10 +144,13 @@ $('submitBtn').onclick = async ()=>{
   if(!chosen) return;
   const subject = $('subject').value.trim();
   const career  = $('career').value;
+  const btn = $('submitBtn'), orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '지도에 올리는 중… ⏳';   // 로딩 안내(전송에 1~2초 걸림)
   const payload = { school:chosen[0], region:chosen[1], lat:chosen[2], lon:chosen[3], subject, career };
   if(API_URL.indexOf('http') === 0){
     try{ await fetch(API_URL, { method:'POST', body: JSON.stringify(payload) }); }catch(e){}
   }
+  btn.disabled = false; btn.textContent = orig;
   showOk(chosen[0], chosen[1], subject, career);
 };
 

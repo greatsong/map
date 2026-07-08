@@ -168,7 +168,12 @@ function fitChanged(g){
 window.addEventListener('resize', ()=>{ if(VIEW){ VIEW=buildProj(VIEW.g); render(); } });
 
 function bump(el,val){ if(el.textContent===String(val))return; el.textContent=val; el.classList.add('bump'); setTimeout(()=>el.classList.remove('bump'),200); }
-function ticker(name,region){ const t=document.getElementById('ticker'); t.innerHTML=`🎉 ${name} <span class="rg">· ${region||''}</span> 합류!`; t.classList.add('show'); clearTimeout(ticker._t); ticker._t=setTimeout(()=>t.classList.remove('show'),3200); }
+function ticker(name,region,subject,career){
+  const extra=[region, subject, career].filter(Boolean).join(' · ');
+  const t=document.getElementById('ticker');
+  t.innerHTML=`🎉 ${name} <span class="rg">${extra?'· '+extra:''}</span> 합류!`;
+  t.classList.add('show'); clearTimeout(ticker._t); ticker._t=setTimeout(()=>t.classList.remove('show'),3400);
+}
 
 function addPin(school,region,la,lo,kind){
   const color=kindColor(kind);
@@ -216,7 +221,7 @@ async function poll(){
       document.getElementById('cH').textContent=cH;
       const g=pinsGeo(); if(fitChanged(g)) VIEW=buildProj(g);
       render();                                  // 지도(구 색칠 반영) + 핀 재배치
-      if(last) ticker(last.school, last.region);
+      if(last) ticker(last.school, last.region, last.subject, last.career);
     }
   }catch(e){ /* 다음 폴링에서 재시도 */ }
 }
