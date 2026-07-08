@@ -9,30 +9,42 @@
   *{box-sizing:border-box;}
   body{margin:0;min-height:100vh;background:linear-gradient(180deg,#FFF7E0,var(--bg));color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-    display:flex;align-items:flex-start;justify-content:center;padding:26px 20px;}
+    display:flex;align-items:flex-start;justify-content:center;padding:24px 20px;}
   .wrap{width:100%;max-width:420px;text-align:center;}
-  .emoji{font-size:50px;}
-  h1{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin:.4rem 0 .2rem;}
-  .sub{color:var(--muted);font-size:.95rem;margin-bottom:18px;}
-  input{width:100%;font-size:1.05rem;padding:.85rem 1rem;border:1.5px solid var(--border);
-    border-radius:14px;background:#fff;color:var(--text);text-align:center;}
-  input:focus{outline:none;border-color:var(--gold);}
-  #list{margin-top:10px;text-align:left;}
+  .emoji{font-size:46px;}
+  h1{font-size:1.45rem;font-weight:800;letter-spacing:-.02em;margin:.4rem 0 .2rem;}
+  .sub{color:var(--muted);font-size:.93rem;margin-bottom:16px;}
+  label{display:block;text-align:left;font-size:.82rem;font-weight:800;color:var(--muted);margin:12px 2px 5px;}
+  input,select{width:100%;font-size:1.05rem;padding:.8rem .95rem;border:1.5px solid var(--border);
+    border-radius:13px;background:#fff;color:var(--text);}
+  input:focus,select:focus{outline:none;border-color:var(--gold);}
+  #q{text-align:center;}
+  #list{margin-top:8px;text-align:left;}
   .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;margin:6px 0;
     padding:.7rem .9rem;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text);
-    font-weight:700;cursor:pointer;font-family:inherit;font-size:.98rem;text-align:left;}
+    font-weight:700;cursor:pointer;font-family:inherit;font-size:.97rem;}
   .pick:active{background:var(--card);}
   .pick .rg{font-size:.8rem;color:var(--muted);font-weight:600;}
   .hint,.err{margin-top:12px;color:var(--muted);font-size:.9rem;}
   .err{color:#C0392B;font-weight:700;}
+  /* 선택 후 폼 */
+  #form{display:none;}
+  .chosen{display:flex;justify-content:space-between;align-items:center;background:var(--card);
+    border:1px solid var(--border);border-radius:13px;padding:.75rem 1rem;margin-bottom:4px;}
+  .chosen b{font-size:1.05rem;} .chosen .rg{font-size:.78rem;color:var(--muted);font-weight:600;}
+  .chosen a{color:var(--accent);font-weight:800;font-size:.82rem;cursor:pointer;white-space:nowrap;}
+  .go{width:100%;margin-top:18px;border:none;border-radius:14px;padding:.95rem;font-size:1.08rem;
+    font-weight:800;color:#fff;background:var(--accent);cursor:pointer;font-family:inherit;box-shadow:0 6px 18px var(--shadow);}
+  .go:active{transform:scale(.98);}
   #ok{position:fixed;inset:0;background:rgba(255,250,235,.97);display:none;flex-direction:column;
     align-items:center;justify-content:center;text-align:center;padding:24px;z-index:10;}
   #ok.show{display:flex;}
-  #ok .big{font-size:76px;animation:pop .6s ease;}
-  #ok h2{font-size:1.6rem;margin:.3rem 0 0;}
+  #ok .big{font-size:74px;animation:pop .6s ease;}
+  #ok h2{font-size:1.55rem;margin:.3rem 0 0;}
   #ok .region{color:var(--accent);font-weight:800;}
+  #ok .meta{margin-top:8px;color:var(--muted);font-weight:700;}
   #ok .look{margin-top:12px;color:var(--muted);}
-  #ok .again{margin-top:24px;border:1px solid var(--border);background:#fff;color:var(--text);
+  #ok .again{margin-top:22px;border:1px solid var(--border);background:#fff;color:var(--text);
     border-radius:12px;padding:.7rem 1.3rem;font-weight:700;cursor:pointer;font-family:inherit;}
   @keyframes pop{0%{transform:scale(0) rotate(-18deg);}60%{transform:scale(1.25) rotate(8deg);}100%{transform:scale(1);}}
   .conf{position:fixed;top:-30px;font-size:22px;animation:fall 2.4s linear forwards;z-index:11;pointer-events:none;}
@@ -43,80 +55,119 @@
   <div class="wrap">
     <div class="emoji">🗺️📍</div>
     <h1>우리 학교를 전국 지도에!</h1>
-    <p class="sub">학교 이름을 검색하면<br>앞 화면 지도에 <b>뿅!</b> 나타나요</p>
-    <input id="q" placeholder="학교 이름 검색 (예: 당곡고)" autocomplete="off" disabled>
-    <div id="list"></div>
-    <div class="hint" id="hint">데이터 불러오는 중…</div>
+    <p class="sub">학교를 찾고 과목·경력을 알려주면<br>앞 화면 지도에 <b>뿅!</b> 나타나요</p>
+
+    <!-- 1) 학교 검색 -->
+    <div id="search">
+      <input id="q" placeholder="학교 이름 검색 (예: 당곡고)" autocomplete="off" disabled>
+      <div id="list"></div>
+      <div class="hint" id="hint">데이터 불러오는 중…</div>
+    </div>
+
+    <!-- 2) 과목·경력 입력 -->
+    <div id="form">
+      <div class="chosen">
+        <div style="text-align:left"><b id="chName"></b><br><span class="rg" id="chRegion"></span></div>
+        <a id="reSearch">✎ 다시 검색</a>
+      </div>
+      <label>과목 (선택하거나 직접 입력)</label>
+      <input id="subject" list="subjects" placeholder="예: 수학 · 전과목 · 직접 입력">
+      <datalist id="subjects">
+        <option value="전과목"></option>
+        <option value="국어"></option><option value="영어"></option><option value="수학"></option>
+        <option value="사회"></option><option value="과학"></option><option value="도덕/윤리"></option>
+        <option value="역사"></option><option value="지리"></option><option value="일반사회"></option>
+        <option value="물리"></option><option value="화학"></option><option value="생명과학"></option>
+        <option value="지구과학"></option><option value="기술·가정"></option><option value="정보·컴퓨터"></option>
+        <option value="체육"></option><option value="음악"></option><option value="미술"></option>
+        <option value="한문"></option><option value="제2외국어"></option><option value="진로진학"></option>
+        <option value="특수교육"></option><option value="유아교육"></option><option value="보건"></option>
+        <option value="영양"></option><option value="사서"></option><option value="전문상담"></option>
+      </datalist>
+      <label>교육경력</label>
+      <select id="career">
+        <option value="">선택</option>
+        <option>1년 미만</option><option>1~5년</option><option>6~10년</option>
+        <option>11~15년</option><option>16~20년</option><option>21~25년</option><option>26년 이상</option>
+      </select>
+      <button class="go" id="submitBtn">지도에 올리기 🚀</button>
+    </div>
   </div>
 
   <div id="ok">
     <div class="big">🎉</div>
     <h2 id="okName">○○학교</h2>
-    <div style="margin-top:4px"><span class="region" id="okRegion"></span> 위치에 <b>뿅!</b> 나타났어요</div>
+    <div style="margin-top:4px"><span class="region" id="okRegion"></span> 위치에 <b>뿅!</b></div>
+    <div class="meta" id="okMeta"></div>
     <div class="look">앞 화면 지도를 확인해 보세요 👀</div>
     <button class="again" id="again">다른 학교 올리기</button>
   </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyJkRn8dWVTU40QbWEurQVczygBRVYWhVAalIFc_etw6jvzfPjLd0uRuDuuQAQ_DoXXUQ/exec"; // ← 배포한 Apps Script 웹앱 주소(.../exec)
+const API_URL = "https://script.google.com/macros/s/AKfycbyJkRn8dWVTU40QbWEurQVczygBRVYWhVAalIFc_etw6jvzfPjLd0uRuDuuQAQ_DoXXUQ/exec";
 
-let SCHOOLS = []; // [학교명, 지역, 위도, 경도, 급]
+let SCHOOLS = [], chosen = null;
 const $ = id => document.getElementById(id);
+const err = t => $('hint').innerHTML = `<span class="err">⚠️ ${t}</span>`;
 
 fetch('schools.json').then(r=>r.json()).then(d=>{
   SCHOOLS = d.schools;
   $('q').disabled = false; $('q').focus();
   const note = (API_URL.indexOf('http')===0) ? '' : ' · (시트 연결 전 · 테스트 모드)';
   $('hint').textContent = `전국 ${SCHOOLS.length.toLocaleString()}개 학교 중에서 검색해요` + note;
-}).catch(()=>{ $('hint').innerHTML = '<span class="err">학교 데이터를 못 불러왔어요.</span>'; });
+}).catch(()=>err('학교 데이터를 못 불러왔어요.'));
 
 function search(q){
   q = q.trim(); if(q.length < 2) return [];
-  const starts = [], incl = [];
-  for(const s of SCHOOLS){
-    const i = s[0].indexOf(q);
-    if(i === 0) starts.push(s);
-    else if(i > 0) incl.push(s);
-    if(starts.length >= 8) break;
-  }
-  return starts.concat(incl).slice(0, 8);
+  const st=[], inc=[];
+  for(const s of SCHOOLS){ const i=s[0].indexOf(q); if(i===0)st.push(s); else if(i>0)inc.push(s); if(st.length>=8)break; }
+  return st.concat(inc).slice(0,8);
 }
-
 function renderList(){
-  const rows = search($('q').value);
   const list = $('list'); list.innerHTML = '';
-  rows.forEach(s=>{
-    const b = document.createElement('button'); b.className = 'pick';
+  search($('q').value).forEach(s=>{
+    const b = document.createElement('button'); b.className='pick';
     b.innerHTML = `<span>${s[0]}</span><span class="rg">${s[1]}</span>`;
-    b.onclick = ()=>submit(s);
+    b.onclick = ()=>choose(s);
     list.appendChild(b);
   });
 }
-
-async function submit(s){
-  if(API_URL.indexOf('http') === 0){   // 시트 연결됐을 때만 전송
-    try{
-      await fetch(API_URL, { method:'POST',
-        body: JSON.stringify({ school: s[0], region: s[1], lat: s[2], lon: s[3] }) });
-    }catch(e){ /* 보드는 폴링으로 반영되므로 성공 화면은 그대로 */ }
-  }
-  showOk(s[0], s[1]);   // 연결 전에도 축하 화면은 보여줌(테스트 모드)
+function choose(s){
+  chosen = s;
+  $('chName').textContent = s[0]; $('chRegion').textContent = s[1];
+  $('search').style.display = 'none';
+  $('form').style.display = 'block';
 }
+$('reSearch').onclick = ()=>{ $('form').style.display='none'; $('search').style.display='block'; $('q').focus(); };
 
-function showOk(name, region){
+$('submitBtn').onclick = async ()=>{
+  if(!chosen) return;
+  const subject = $('subject').value.trim();
+  const career  = $('career').value;
+  const payload = { school:chosen[0], region:chosen[1], lat:chosen[2], lon:chosen[3], subject, career };
+  if(API_URL.indexOf('http') === 0){
+    try{ await fetch(API_URL, { method:'POST', body: JSON.stringify(payload) }); }catch(e){}
+  }
+  showOk(chosen[0], chosen[1], subject, career);
+};
+
+function showOk(name, region, subject, career){
   $('okName').textContent = name; $('okRegion').textContent = region;
+  $('okMeta').textContent = [subject, career].filter(Boolean).join(' · ');
   $('ok').classList.add('show');
   const E = ['🎉','✨','🎊','📍','⭐','🥳','🗺️'];
-  for(let i=0;i<26;i++){
-    const c = document.createElement('div'); c.className='conf'; c.textContent = E[i%E.length];
-    c.style.left = Math.random()*100+'vw'; c.style.animationDelay = (Math.random()*.7)+'s';
-    document.body.appendChild(c); setTimeout(()=>c.remove(), 2800);
+  for(let i=0;i<24;i++){
+    const c=document.createElement('div'); c.className='conf'; c.textContent=E[i%E.length];
+    c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*.7)+'s';
+    document.body.appendChild(c); setTimeout(()=>c.remove(),2800);
   }
 }
 
 $('q').addEventListener('input', renderList);
 $('again').onclick = ()=>{
-  $('ok').classList.remove('show'); $('q').value=''; $('list').innerHTML=''; $('q').focus();
+  $('ok').classList.remove('show'); chosen=null;
+  $('form').style.display='none'; $('search').style.display='block';
+  $('q').value=''; $('list').innerHTML=''; $('subject').value=''; $('career').value=''; $('q').focus();
 };
 </script>
 </body>
