@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전국 선생님 지도 🗺️</title>
+<style>
+  :root{ --gold:#F4B400; --accent:#E8930C; --bg:#FFFDF7; --card:#FFF6E0; --border:#F0E2BC; --text:#3A2E1A; --muted:#9A8B6A; --shadow:rgba(180,140,20,.25); }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{background:radial-gradient(1200px 800px at 70% -10%,#FFF9E8,#FFFDF7);color:var(--text);overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    display:flex;flex-direction:column;}
+  #head{padding:18px 28px 6px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;}
+  #head h1{font-size:clamp(1.4rem,2.4vw,2.2rem);font-weight:800;letter-spacing:-.03em;margin:0;}
+  #head h1 .a{color:var(--accent);}
+  #head .cnt{font-size:clamp(1rem,1.8vw,1.5rem);font-weight:800;color:var(--accent);}
+  #head .cnt b{font-size:1.35em;}
+  #main{flex:1;position:relative;min-height:0;}
+  #stageWrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  #stage{position:relative;transform-origin:center;}
+  canvas{display:block;}
+  #pins{position:absolute;inset:0;pointer-events:none;}
+  .pin{position:absolute;transform:translate(-50%,-100%);will-change:transform;}
+  .pin .dot{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid #fff;
+    box-shadow:0 3px 8px rgba(0,0,0,.25);margin:0 auto;animation:drop .6s cubic-bezier(.2,1.4,.4,1);}
+  .pin .ring{position:absolute;left:50%;top:7px;width:14px;height:14px;border-radius:50%;
+    border:3px solid var(--accent);transform:translate(-50%,-50%);animation:ripple 1s ease-out 1;opacity:0;}
+  .pin .lab{margin-top:2px;font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;
+    background:rgba(255,255,255,.85);border:1px solid var(--border);border-radius:8px;padding:1px 6px;
+    box-shadow:0 2px 6px var(--shadow);animation:drop .6s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes drop{0%{transform:translateY(-26px) scale(.2);opacity:0;}70%{transform:translateY(3px) scale(1.15);opacity:1;}100%{transform:translateY(0) scale(1);opacity:1;}}
+  @keyframes ripple{0%{opacity:.7;transform:translate(-50%,-50%) scale(.6);}100%{opacity:0;transform:translate(-50%,-50%) scale(4.5);}}
+  #qr{position:absolute;right:22px;bottom:20px;background:#fff;border:1px solid var(--border);border-radius:18px;
+    padding:14px 14px 10px;text-align:center;box-shadow:0 10px 30px var(--shadow);}
+  #qr img{width:190px;height:190px;display:block;border-radius:8px;}
+  #qr .t{margin-top:8px;font-weight:800;font-size:.95rem;}
+  #qr .u{font-size:.72rem;color:var(--muted);word-break:break-all;max-width:190px;}
+  #toast{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);background:var(--accent);color:#fff;
+    font-weight:800;padding:10px 20px;border-radius:99px;box-shadow:0 8px 24px var(--shadow);opacity:0;transition:opacity .3s;}
+  #toast.show{opacity:1;}
+</style>
+</head>
+<body>
+  <div id="head">
+    <h1>🗺️ 우리 학교는 어디에? <span class="a">전국 선생님 지도</span></h1>
+    <div class="cnt"><b id="count">0</b>개 학교 접속!</div>
+  </div>
+  <div id="main">
+    <div id="stageWrap"><div id="stage">
+      <canvas id="map"></canvas>
+      <div id="pins"></div>
+    </div></div>
+    <div id="qr">
+      <img id="qrimg" alt="QR">
+      <div class="t">📱 여기를 스캔!</div>
+      <div class="u" id="qrurl"></div>
+    </div>
+  </div>
+  <div id="toast"></div>
+
+<script>
+/* ===== 아래 두 줄만 우리 것으로 바꾸세요 ===== */
+const API_URL   = "여기에_구글_웹앱_주소_붙여넣기";      // 배포한 Apps Script 웹앱 주소(.../exec)
+const PHONE_URL = "https://greatsong.github.io/map/";   // 참가자 폰이 접속할 이 오프닝 폰 앱 주소
+/* ============================================ */
+
+const W = 760, H = 980, PAD = 46;
+const cv = document.getElementById('map'); cv.width = W; cv.height = H;
+const ctx = cv.getContext('2d');
+const stage = document.getElementById('stage'); stage.style.width = W+'px'; stage.style.height = H+'px';
+const pinsEl = document.getElementById('pins');
+
+// QR (참가자 접속용)
+document.getElementById('qrimg').src =
+  'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=' + encodeURIComponent(PHONE_URL);
+document.getElementById('qrurl').textContent = PHONE_URL.replace(/^https?:\/\//,'');
+
+let PROJ = null;
+function makeProjection(pts){
+  let laMin=90,laMax=-90,loMin=180,loMax=-180;
+  for(const p of pts){ if(p[0]<laMin)laMin=p[0]; if(p[0]>laMax)laMax=p[0]; if(p[1]<loMin)loMin=p[1]; if(p[1]>loMax)loMax=p[1]; }
+  const kx = Math.cos((laMin+laMax)/2 * Math.PI/180);
+  const gxMin=loMin*kx, gxMax=loMax*kx, gyMin=laMin, gyMax=laMax;
+  const scale = Math.min((W-2*PAD)/(gxMax-gxMin), (H-2*PAD)/(gyMax-gyMin));
+  const offX = (W-(gxMax-gxMin)*scale)/2, offY = (H-(gyMax-gyMin)*scale)/2;
+  return (la,lo)=>[ offX+(lo*kx-gxMin)*scale, offY+(gyMax-la)*scale ];
+}
+
+fetch('schools.json').then(r=>r.json()).then(d=>{
+  const pts = d.schools.map(s=>[s[2], s[3]]);
+  PROJ = makeProjection(pts);
+  // 배경: 전국 모든 학교 = 옅은 점 (한국 모양이 떠오름)
+  ctx.fillStyle = 'rgba(232,147,12,.16)';
+  for(const [la,lo] of pts){ const [x,y]=PROJ(la,lo); ctx.fillRect(x, y, 1.6, 1.6); }
+  fitStage();
+  startPolling();
+});
+
+function fitStage(){
+  const wrap = document.getElementById('main');
+  const s = Math.min(wrap.clientWidth/W, wrap.clientHeight/H) * 0.98;
+  stage.style.transform = `scale(${s})`;
+}
+window.addEventListener('resize', fitStage);
+
+const seen = new Set();
+function addPin(school, la, lo, animate){
+  if(!PROJ) return;
+  const [x,y] = PROJ(la, lo);
+  const el = document.createElement('div'); el.className='pin'; el.style.left=x+'px'; el.style.top=y+'px';
+  el.innerHTML = `${animate?'<div class="ring"></div>':''}<div class="dot"></div><div class="lab">${school}</div>`;
+  if(!animate){ el.querySelectorAll('.dot,.lab').forEach(n=>n.style.animation='none'); }
+  pinsEl.appendChild(el);
+}
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+async function poll(){
+  if(API_URL.indexOf('http')!==0) return;
+  try{
+    const d = await (await fetch(API_URL)).json();
+    const list = d.schools || [];
+    list.forEach(r=>{
+      const key = r.school + '@' + r.lat + ',' + r.lon;
+      if(seen.has(key)) return;
+      seen.add(key);
+      addPin(r.school, +r.lat, +r.lon, true);
+      toast(`🎉 ${r.school} 접속!`);
+    });
+    document.getElementById('count').textContent = seen.size.toLocaleString();
+  }catch(e){ /* 다음 폴링에서 재시도 */ }
+}
+function startPolling(){ poll(); setInterval(poll, 3500); }
+</script>
+</body>
+</html>

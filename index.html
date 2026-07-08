@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>우리 학교를 전국 지도에! 🗺️</title>
+<style>
+  :root{ --gold:#F4B400; --accent:#E8930C; --bg:#FFFDF7; --card:#FFF6E0; --border:#F0E2BC; --text:#3A2E1A; --muted:#9A8B6A; --shadow:rgba(180,140,20,.2); }
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#FFF7E0,var(--bg));color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    display:flex;align-items:flex-start;justify-content:center;padding:26px 20px;}
+  .wrap{width:100%;max-width:420px;text-align:center;}
+  .emoji{font-size:50px;}
+  h1{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin:.4rem 0 .2rem;}
+  .sub{color:var(--muted);font-size:.95rem;margin-bottom:18px;}
+  input{width:100%;font-size:1.05rem;padding:.85rem 1rem;border:1.5px solid var(--border);
+    border-radius:14px;background:#fff;color:var(--text);text-align:center;}
+  input:focus{outline:none;border-color:var(--gold);}
+  #list{margin-top:10px;text-align:left;}
+  .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;margin:6px 0;
+    padding:.7rem .9rem;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text);
+    font-weight:700;cursor:pointer;font-family:inherit;font-size:.98rem;text-align:left;}
+  .pick:active{background:var(--card);}
+  .pick .rg{font-size:.8rem;color:var(--muted);font-weight:600;}
+  .hint,.err{margin-top:12px;color:var(--muted);font-size:.9rem;}
+  .err{color:#C0392B;font-weight:700;}
+  #ok{position:fixed;inset:0;background:rgba(255,250,235,.97);display:none;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:24px;z-index:10;}
+  #ok.show{display:flex;}
+  #ok .big{font-size:76px;animation:pop .6s ease;}
+  #ok h2{font-size:1.6rem;margin:.3rem 0 0;}
+  #ok .region{color:var(--accent);font-weight:800;}
+  #ok .look{margin-top:12px;color:var(--muted);}
+  #ok .again{margin-top:24px;border:1px solid var(--border);background:#fff;color:var(--text);
+    border-radius:12px;padding:.7rem 1.3rem;font-weight:700;cursor:pointer;font-family:inherit;}
+  @keyframes pop{0%{transform:scale(0) rotate(-18deg);}60%{transform:scale(1.25) rotate(8deg);}100%{transform:scale(1);}}
+  .conf{position:fixed;top:-30px;font-size:22px;animation:fall 2.4s linear forwards;z-index:11;pointer-events:none;}
+  @keyframes fall{to{transform:translateY(115vh) rotate(360deg);opacity:.5;}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="emoji">🗺️📍</div>
+    <h1>우리 학교를 전국 지도에!</h1>
+    <p class="sub">학교 이름을 검색하면<br>앞 화면 지도에 <b>뿅!</b> 나타나요</p>
+    <input id="q" placeholder="학교 이름 검색 (예: 당곡고)" autocomplete="off" disabled>
+    <div id="list"></div>
+    <div class="hint" id="hint">데이터 불러오는 중…</div>
+  </div>
+
+  <div id="ok">
+    <div class="big">🎉</div>
+    <h2 id="okName">○○학교</h2>
+    <div style="margin-top:4px"><span class="region" id="okRegion"></span> 위치에 <b>뿅!</b> 나타났어요</div>
+    <div class="look">앞 화면 지도를 확인해 보세요 👀</div>
+    <button class="again" id="again">다른 학교 올리기</button>
+  </div>
+
+<script>
+const API_URL = "여기에_구글_웹앱_주소_붙여넣기"; // ← 배포한 Apps Script 웹앱 주소(.../exec)
+
+let SCHOOLS = []; // [학교명, 지역, 위도, 경도, 급]
+const $ = id => document.getElementById(id);
+
+fetch('schools.json').then(r=>r.json()).then(d=>{
+  SCHOOLS = d.schools;
+  $('q').disabled = false; $('q').focus();
+  $('hint').textContent = `전국 ${SCHOOLS.length.toLocaleString()}개 학교 중에서 검색해요`;
+}).catch(()=>{ $('hint').innerHTML = '<span class="err">학교 데이터를 못 불러왔어요.</span>'; });
+
+function search(q){
+  q = q.trim(); if(q.length < 2) return [];
+  const starts = [], incl = [];
+  for(const s of SCHOOLS){
+    const i = s[0].indexOf(q);
+    if(i === 0) starts.push(s);
+    else if(i > 0) incl.push(s);
+    if(starts.length >= 8) break;
+  }
+  return starts.concat(incl).slice(0, 8);
+}
+
+function renderList(){
+  const rows = search($('q').value);
+  const list = $('list'); list.innerHTML = '';
+  rows.forEach(s=>{
+    const b = document.createElement('button'); b.className = 'pick';
+    b.innerHTML = `<span>${s[0]}</span><span class="rg">${s[1]}</span>`;
+    b.onclick = ()=>submit(s);
+    list.appendChild(b);
+  });
+}
+
+async function submit(s){
+  if(API_URL.indexOf('http') !== 0){ $('hint').innerHTML = '<span class="err">서버(API_URL)가 아직 연결되지 않았어요.</span>'; return; }
+  try{
+    await fetch(API_URL, { method:'POST',
+      body: JSON.stringify({ school: s[0], region: s[1], lat: s[2], lon: s[3] }) });
+  }catch(e){ /* 보드는 폴링으로 반영되므로 성공 화면은 보여줌 */ }
+  showOk(s[0], s[1]);
+}
+
+function showOk(name, region){
+  $('okName').textContent = name; $('okRegion').textContent = region;
+  $('ok').classList.add('show');
+  const E = ['🎉','✨','🎊','📍','⭐','🥳','🗺️'];
+  for(let i=0;i<26;i++){
+    const c = document.createElement('div'); c.className='conf'; c.textContent = E[i%E.length];
+    c.style.left = Math.random()*100+'vw'; c.style.animationDelay = (Math.random()*.7)+'s';
+    document.body.appendChild(c); setTimeout(()=>c.remove(), 2800);
+  }
+}
+
+$('q').addEventListener('input', renderList);
+$('again').onclick = ()=>{
+  $('ok').classList.remove('show'); $('q').value=''; $('list').innerHTML=''; $('q').focus();
+};
+</script>
+</body>
+</html>
