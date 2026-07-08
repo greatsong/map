@@ -138,10 +138,14 @@ function pinsGeo(){
   g.loMin=Math.max(g.loMin,NAT.loMin); g.loMax=Math.min(g.loMax,NAT.loMax);
   return g;
 }
-function outside(la,lo){
+function fitChanged(g){
   if(!VIEW) return true;
-  const g=VIEW.g, mLa=(g.laMax-g.laMin)*0.08, mLo=(g.loMax-g.loMin)*0.08;
-  return la<g.laMin+mLa || la>g.laMax-mLa || lo<g.loMin+mLo || lo>g.loMax-mLo;
+  const v=VIEW.g, vLa=v.laMax-v.laMin, vLo=v.loMax-v.loMin;
+  if(Math.abs((g.laMax-g.laMin)-vLa)/vLa>0.15) return true;
+  if(Math.abs((g.loMax-g.loMin)-vLo)/vLo>0.15) return true;
+  if(Math.abs((g.loMin+g.loMax)/2-(v.loMin+v.loMax)/2)>vLo*0.1) return true;
+  if(Math.abs((g.laMin+g.laMax)/2-(v.laMin+v.laMax)/2)>vLa*0.1) return true;
+  return false;
 }
 window.addEventListener('resize', ()=>{ if(VIEW){ VIEW=buildProj(VIEW.g); render(); } });
 
@@ -171,12 +175,11 @@ fetch('schools.json').then(r=>r.json()).then(d=>{
 async function poll(){
   try{
     const d = await (await fetch(API_URL)).json();
-    let fresh=0, last=null, needFit=false;
+    let fresh=0, last=null;
     (d.schools||[]).forEach(r=>{
       const key=r.school+'@'+r.lat+','+r.lon;
       if(seen.has(key)) return; seen.add(key); count++; fresh++;
       const kind = LOOKUP[r.lat+','+r.lon] || (r.kind||'');
-      if(outside(+r.lat,+r.lon)) needFit=true;
       addPin(r.school, r.region, +r.lat, +r.lon, kind);
       if(kind==='초')cE++; else if(kind==='중')cM++; else if(kind==='고')cH++;
       last=r;
@@ -187,7 +190,7 @@ async function poll(){
       document.getElementById('cE').textContent=cE;
       document.getElementById('cM').textContent=cM;
       document.getElementById('cH').textContent=cH;
-      if(needFit){ VIEW=buildProj(pinsGeo()); render(); }  // 새 지역이면 그 범위로 선명하게 재줌
+      const g=pinsGeo(); if(fitChanged(g)){ VIEW=buildProj(g); render(); }  // 핀 범위에 맞춰 선명하게 줌
       if(last) ticker(last.school, last.region);
     }
   }catch(e){ /* 다음 폴링에서 재시도 */ }
