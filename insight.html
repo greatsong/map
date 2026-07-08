@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>우리 동네 인구 인사이트 🔎</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
   :root{ --gold:#F4B400; --accent:#E8930C; --bg:#FFFDF7; --card:#FFF6E0; --border:#F0E2BC;
     --text:#3A2E1A; --muted:#9A8B6A; --shadow:rgba(180,140,20,.18); --male:#4C8DF6; --female:#F4789B; }
@@ -85,6 +86,31 @@ function ageBySex(cells){
 }
 const rsum=(a,lo,hi)=>{let s=0;for(let i=lo;i<=hi;i++)s+=a[i];return s;};
 
+function drawPyramid(m, f){
+  const labels=[], male=[], female=[];
+  for(let a=0;a<=100;a+=5){
+    labels.push(a>=100?'100+':a+'-'+(a+4));
+    let sm=0,sf=0; for(let i=a;i<Math.min(a+5,101);i++){ sm+=m[i]; sf+=f[i]; }
+    male.push(sm); female.push(sf);
+  }
+  const mx=Math.max(...male,...female,1);
+  const step=Math.max(1000, Math.ceil(mx/4/1000)*1000), lim=Math.ceil(mx/step)*step;
+  const tv=[]; for(let v=-lim; v<=lim; v+=step) tv.push(v);
+  Plotly.react('py',[
+    {y:labels,x:male.map(v=>-v),name:'남자',type:'bar',orientation:'h',marker:{color:'#4C8DF6'},
+     customdata:male,hovertemplate:'%{y}세 · 남 %{customdata:,}명<extra></extra>'},
+    {y:labels,x:female,name:'여자',type:'bar',orientation:'h',marker:{color:'#F4789B'},
+     hovertemplate:'%{y}세 · 여 %{x:,}명<extra></extra>'}
+  ],{
+    barmode:'relative', bargap:0.12, height:380, margin:{l:54,r:14,t:6,b:26},
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{family:'-apple-system,"Malgun Gothic",sans-serif',size:11,color:'#3A2E1A'},
+    legend:{orientation:'h',x:0.5,xanchor:'center',y:1.06},
+    xaxis:{tickvals:tv,ticktext:tv.map(v=>Math.abs(v).toLocaleString()),
+           zeroline:true,zerolinecolor:'#d8cca8',gridcolor:'rgba(0,0,0,.05)',fixedrange:true},
+    yaxis:{fixedrange:true}
+  },{displayModeBar:false,responsive:true});
+}
 function analyze(name){
   const R=BYNAME[name]; if(!R)return;
   const {m,f}=R.sex, tot=R.total;
@@ -96,14 +122,7 @@ function analyze(name){
     <div class="card"><div class="k">고령화율 65+</div><div class="v">${pct(old)}</div></div>
     <div class="card"><div class="k">유소년 0-14</div><div class="v">${pct(young)}</div></div>
     <div class="card"><div class="k">만 14세 비율</div><div class="v">${pct(a14)}</div><div class="r">${rank}</div></div>`;
-  // 피라미드
-  const tb=arr=>BANDS.map(([lo,hi])=>rsum(arr,lo,Math.min(hi,100)));
-  const mb=tb(m),fb=tb(f),mx=Math.max(...mb,...fb,1);
-  let ph='';
-  for(let i=BANDS.length-1;i>=0;i--){const b=BANDS[i],l=b[1]>=150?`${b[0]}+`:`${b[0]}-${b[1]}`;
-    ph+=`<div class="py-row"><div class="side m"><div class="bar m" style="width:${mb[i]/mx*100}%"></div></div>
-    <div class="lbl">${l}</div><div class="side f"><div class="bar f" style="width:${fb[i]/mx*100}%"></div></div></div>`;}
-  document.getElementById('py').innerHTML=ph;
+  drawPyramid(m, f);   // 인구 피라미드 (Plotly)
   // 쌍둥이(코사인)
   const p=R.ratio; const cos=q=>{let d=0,np=0,nq=0;for(let i=0;i<=100;i++){d+=p[i]*q[i];np+=p[i]*p[i];nq+=q[i]*q[i];}return d/(Math.sqrt(np)*Math.sqrt(nq)||1);};
   const tw=REGIONS.filter(r=>r!==name).map(r=>({r,s:cos(BYNAME[r].ratio)})).sort((x,y)=>y.s-x.s).slice(0,5);
