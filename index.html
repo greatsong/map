@@ -66,7 +66,8 @@ const $ = id => document.getElementById(id);
 fetch('schools.json').then(r=>r.json()).then(d=>{
   SCHOOLS = d.schools;
   $('q').disabled = false; $('q').focus();
-  $('hint').textContent = `전국 ${SCHOOLS.length.toLocaleString()}개 학교 중에서 검색해요`;
+  const note = (API_URL.indexOf('http')===0) ? '' : ' · (시트 연결 전 · 테스트 모드)';
+  $('hint').textContent = `전국 ${SCHOOLS.length.toLocaleString()}개 학교 중에서 검색해요` + note;
 }).catch(()=>{ $('hint').innerHTML = '<span class="err">학교 데이터를 못 불러왔어요.</span>'; });
 
 function search(q){
@@ -93,12 +94,13 @@ function renderList(){
 }
 
 async function submit(s){
-  if(API_URL.indexOf('http') !== 0){ $('hint').innerHTML = '<span class="err">서버(API_URL)가 아직 연결되지 않았어요.</span>'; return; }
-  try{
-    await fetch(API_URL, { method:'POST',
-      body: JSON.stringify({ school: s[0], region: s[1], lat: s[2], lon: s[3] }) });
-  }catch(e){ /* 보드는 폴링으로 반영되므로 성공 화면은 보여줌 */ }
-  showOk(s[0], s[1]);
+  if(API_URL.indexOf('http') === 0){   // 시트 연결됐을 때만 전송
+    try{
+      await fetch(API_URL, { method:'POST',
+        body: JSON.stringify({ school: s[0], region: s[1], lat: s[2], lon: s[3] }) });
+    }catch(e){ /* 보드는 폴링으로 반영되므로 성공 화면은 그대로 */ }
+  }
+  showOk(s[0], s[1]);   // 연결 전에도 축하 화면은 보여줌(테스트 모드)
 }
 
 function showOk(name, region){
