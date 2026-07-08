@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>우리 동네 인구 인사이트 🔎</title>
+<style>
+  :root{ --gold:#F4B400; --accent:#E8930C; --bg:#FFFDF7; --card:#FFF6E0; --border:#F0E2BC;
+    --text:#3A2E1A; --muted:#9A8B6A; --shadow:rgba(180,140,20,.18); --male:#4C8DF6; --female:#F4789B; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;}
+  .wrap{max-width:620px;margin:0 auto;padding:26px 18px 60px;}
+  h1{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin:.1rem 0;}
+  h1 .a{color:var(--accent);}
+  .under{width:64px;height:4px;border-radius:99px;margin:.4rem 0 .3rem;background:linear-gradient(90deg,var(--gold),var(--accent));}
+  .lead{color:var(--muted);font-size:.95rem;margin:0 0 16px;}
+  input#q{width:100%;font-size:1.05rem;padding:.7rem .9rem;border:1.5px solid var(--border);
+    border-radius:12px;background:#fff;color:var(--text);margin-bottom:16px;}
+  input#q:focus{outline:none;border-color:var(--gold);}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:0 1px 4px var(--shadow);}
+  .card .k{font-size:.72rem;color:var(--muted);font-weight:700;}
+  .card .v{font-size:1.1rem;font-weight:800;color:var(--accent);margin-top:2px;}
+  .card .r{font-size:.7rem;color:var(--muted);margin-top:1px;font-weight:700;}
+  h3{font-size:1rem;margin:18px 0 6px;font-weight:800;}
+  .legend{font-size:.8rem;color:var(--muted);margin-bottom:6px;}
+  .legend b.m{color:var(--male);} .legend b.f{color:var(--female);}
+  .py-row{display:flex;align-items:center;gap:6px;margin:2px 0;}
+  .side{flex:1;display:flex;} .side.m{justify-content:flex-end;}
+  .bar{height:15px;border-radius:5px;transition:width .4s;}
+  .bar.m{background:var(--male);} .bar.f{background:var(--female);}
+  .lbl{width:48px;text-align:center;color:var(--muted);font-size:.76rem;font-variant-numeric:tabular-nums;}
+  .twin{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff;
+    border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:8px;cursor:pointer;}
+  .twin:hover{background:var(--card);}
+  .twin .nm{font-weight:700;} .twin .sc{font-weight:800;color:var(--accent);font-size:.9rem;}
+  .aibtn{width:100%;border:none;border-radius:12px;padding:.85rem;font-size:1rem;font-weight:800;
+    color:#fff;background:var(--accent);cursor:pointer;font-family:inherit;box-shadow:0 4px 14px var(--shadow);margin-top:8px;}
+  .prompt{width:100%;margin-top:10px;border:1px solid var(--border);border-radius:12px;background:#fffdf5;
+    color:var(--text);padding:12px;font-size:.85rem;line-height:1.55;font-family:ui-monospace,Menlo,monospace;
+    height:180px;resize:none;display:none;}
+  .prompt.show{display:block;}
+  .foot{color:var(--muted);font-size:.78rem;margin-top:22px;}
+  @media(max-width:560px){.cards{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🔎 우리 동네 <span class="a">인구 인사이트</span></h1>
+    <div class="under"></div>
+    <p class="lead">동네 이름을 검색해 인구 구조·전국 순위·<b>쌍둥이 동네</b>를 찾아보세요.</p>
+    <input id="q" list="regions" placeholder="동네 검색 (예: 서울특별시 강남구 대치1동)" disabled>
+    <datalist id="regions"></datalist>
+    <div id="body" style="display:none">
+      <div class="cards" id="cards"></div>
+      <h3>👥 인구 피라미드</h3>
+      <div class="legend"><b class="m">■ 남자</b> &nbsp; <b class="f">■ 여자</b></div>
+      <div id="py"></div>
+      <h3>👯 쌍둥이 동네 <span style="font-weight:600;color:var(--muted);font-size:.82rem">— 인구 구조가 가장 닮은 곳</span></h3>
+      <div id="twins"></div>
+      <h3>🤖 AI에게 분석 맡기기</h3>
+      <button class="aibtn" id="aibtn">이 동네 분석 프롬프트 복사하기</button>
+      <textarea class="prompt" id="prompt" readonly></textarea>
+    </div>
+    <p class="foot" id="foot">데이터 불러오는 중…</p>
+  </div>
+
+<script>
+const DATA_URL = "https://greatsong.github.io/modeudata-population-web/population_2026_05.csv";
+let HEADER=[], REGIONS=[], BYNAME={}, RANK14=[], N14=0;
+const num=s=>parseInt(s,10)||0;
+const BANDS=[[0,9],[10,19],[20,29],[30,39],[40,49],[50,59],[60,69],[70,79],[80,89],[90,150]];
+
+function ageArr(cells){
+  const a=new Array(101).fill(0);
+  for(let i=2;i<HEADER.length;i++){const m=HEADER[i].match(/_(\d+)세/);if(!m)continue;a[Math.min(100,+m[1])]+=num(cells[i]);}
+  return a;
+}
+function ageBySex(cells){
+  const m=new Array(101).fill(0),f=new Array(101).fill(0);
+  for(let i=2;i<HEADER.length;i++){const mm=HEADER[i].match(/_(\d+)세/);if(!mm)continue;const a=Math.min(100,+mm[1]);
+    if(HEADER[i].startsWith('남자'))m[a]+=num(cells[i]);else f[a]+=num(cells[i]);}
+  return {m,f};
+}
+const rsum=(a,lo,hi)=>{let s=0;for(let i=lo;i<=hi;i++)s+=a[i];return s;};
+
+function analyze(name){
+  const R=BYNAME[name]; if(!R)return;
+  const {m,f}=R.sex, tot=R.total;
+  const pct=n=>tot?(n/tot*100).toFixed(1)+'%':'-';
+  const old=rsum(m,65,100)+rsum(f,65,100), young=rsum(m,0,14)+rsum(f,0,14), a14=R.age[14];
+  const rank=R.rank14?`전국 ${R.rank14}위 / ${N14}`:'';
+  document.getElementById('cards').innerHTML=`
+    <div class="card"><div class="k">총인구</div><div class="v">${tot.toLocaleString()}</div></div>
+    <div class="card"><div class="k">고령화율 65+</div><div class="v">${pct(old)}</div></div>
+    <div class="card"><div class="k">유소년 0-14</div><div class="v">${pct(young)}</div></div>
+    <div class="card"><div class="k">만 14세 비율</div><div class="v">${pct(a14)}</div><div class="r">${rank}</div></div>`;
+  // 피라미드
+  const tb=arr=>BANDS.map(([lo,hi])=>rsum(arr,lo,Math.min(hi,100)));
+  const mb=tb(m),fb=tb(f),mx=Math.max(...mb,...fb,1);
+  let ph='';
+  for(let i=BANDS.length-1;i>=0;i--){const b=BANDS[i],l=b[1]>=150?`${b[0]}+`:`${b[0]}-${b[1]}`;
+    ph+=`<div class="py-row"><div class="side m"><div class="bar m" style="width:${mb[i]/mx*100}%"></div></div>
+    <div class="lbl">${l}</div><div class="side f"><div class="bar f" style="width:${fb[i]/mx*100}%"></div></div></div>`;}
+  document.getElementById('py').innerHTML=ph;
+  // 쌍둥이(코사인)
+  const p=R.ratio; const cos=q=>{let d=0,np=0,nq=0;for(let i=0;i<=100;i++){d+=p[i]*q[i];np+=p[i]*p[i];nq+=q[i]*q[i];}return d/(Math.sqrt(np)*Math.sqrt(nq)||1);};
+  const tw=REGIONS.filter(r=>r!==name).map(r=>({r,s:cos(BYNAME[r].ratio)})).sort((x,y)=>y.s-x.s).slice(0,5);
+  document.getElementById('twins').innerHTML=tw.map(t=>
+    `<div class="twin" data-n="${t.r}"><span class="nm">${t.r}</span><span class="sc">닮음 ${(t.s*100).toFixed(1)}%</span></div>`).join('');
+  document.querySelectorAll('.twin').forEach(el=>el.onclick=()=>{document.getElementById('q').value=el.dataset.n;analyze(el.dataset.n);window.scrollTo({top:0,behavior:'smooth'});});
+  // AI 프롬프트
+  const tw3=tw.slice(0,3).map(t=>t.r).join(', ');
+  document.getElementById('prompt').value=
+`너는 인구·도시 데이터 분석가야. 아래 동네의 인구 구조를 해석하고, 이 동네가 어떤 성격(예: 학군지·신도시·고령화 지역·대학가 등)인지 근거와 함께 알려줘.
+
+[${name}]
+- 총인구: ${tot.toLocaleString()}명
+- 고령화율(65세+): ${pct(old)}
+- 유소년(0-14세): ${pct(young)}
+- 만 14세 비율: ${pct(a14)} (${rank})
+- 인구구조가 가장 닮은 동네: ${tw3}
+
+이 숫자들이 말해주는 이 동네의 이야기를 3~4문장으로 풀어줘.`;
+  document.getElementById('prompt').classList.remove('show');
+  document.getElementById('aibtn').textContent='이 동네 분석 프롬프트 복사하기';
+  document.getElementById('body').style.display='block';
+}
+
+document.getElementById('aibtn').onclick=()=>{
+  const t=document.getElementById('prompt'); t.classList.add('show'); t.select();
+  try{document.execCommand('copy');}catch(e){}
+  document.getElementById('aibtn').textContent='복사됨! ✓ AI(챗지피티·클로드)에 붙여넣어 보세요';
+};
+
+(async()=>{
+  const text=await(await fetch(DATA_URL)).text();
+  const lines=text.trim().split(/\r?\n/);
+  HEADER=lines[0].replace(/^﻿/,'').split(',');
+  const dl=document.getElementById('regions');
+  lines.slice(1).forEach(line=>{
+    const c=line.split(','); const name=c[0]; const age=ageArr(c); const total=age.reduce((x,y)=>x+y,0);
+    if(!name||total<1) return;
+    const ratio=age.map(v=>v/total);
+    const isDong = c[1] && c[1].length>=10 && c[1].slice(5)!=='00000';
+    BYNAME[name]={cells:c, sex:ageBySex(c), age, total, ratio, isDong};
+    const o=document.createElement('option'); o.value=name; dl.appendChild(o);
+    if(isDong && total>3000) REGIONS.push(name);
+  });
+  // 만14세 전국 순위(동 단위, 인구 3천 이상)
+  RANK14=[...REGIONS].sort((a,b)=>BYNAME[b].ratio[14]-BYNAME[a].ratio[14]);
+  N14=RANK14.length;
+  RANK14.forEach((n,i)=>BYNAME[n].rank14=i+1);
+  document.getElementById('q').disabled=false;
+  document.getElementById('foot').textContent=`데이터: 행정안전부 주민등록 인구(2026.05) · 전국 ${REGIONS.length.toLocaleString()}개 동 분석`;
+  const q=document.getElementById('q');
+  q.value='서울특별시 강남구 대치1동'; if(BYNAME[q.value]) analyze(q.value);
+  q.addEventListener('input',()=>{ if(BYNAME[q.value]) analyze(q.value); });
+})().catch(e=>document.getElementById('foot').textContent='⚠️ '+e.message);
+</script>
+</body>
+</html>
