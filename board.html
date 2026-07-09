@@ -89,6 +89,14 @@
   #letter .cta{font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:900;color:var(--accent);margin:20px 0 4px;}
   #letter .sign{color:var(--muted);font-weight:700;margin-top:14px;}
   #letter .close{color:var(--muted);font-size:.85rem;margin-top:18px;}
+  #qr{cursor:pointer;}
+  #qrbig{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(255,253,247,.98);cursor:pointer;}
+  #qrbig.show{display:flex;}
+  #qrbig .h{font-weight:900;font-size:clamp(1.1rem,2.6vw,2rem);color:var(--text);margin-bottom:16px;}
+  #qrbig img{width:min(66vmin,620px);height:min(66vmin,620px);border-radius:18px;box-shadow:0 20px 60px var(--shadow);}
+  #qrbig .u{margin-top:16px;font-weight:900;font-size:clamp(1.1rem,2.4vw,1.8rem);color:var(--accent);}
+  #qrbig .x{margin-top:14px;color:var(--muted);font-size:.9rem;}
   #empty{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);text-align:center;color:var(--muted);
     font-weight:800;font-size:1.1rem;transition:.4s;}
 </style>
@@ -126,8 +134,14 @@
     </div>
     <div id="qr">
       <img id="qrimg" alt="QR">
-      <div class="t">📱 여기를 스캔!</div>
+      <div class="t">📱 여기를 스캔! <span style="color:var(--muted);font-weight:700">(클릭=크게)</span></div>
       <div class="u" id="qrurl"></div>
+    </div>
+    <div id="qrbig">
+      <div class="h">📱 QR을 찍어 우리 학교를 지도에 올려요</div>
+      <img id="qrbigimg" alt="QR 크게">
+      <div class="u">greatsong.github.io/map</div>
+      <div class="x">(화면을 누르면 닫혀요)</div>
     </div>
   </div>
 
@@ -147,7 +161,11 @@ const pinsEl = document.getElementById('pins');
 
 document.getElementById('qrimg').src =
   'https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data=' + encodeURIComponent(PHONE_URL);
+document.getElementById('qrbigimg').src =
+  'https://api.qrserver.com/v1/create-qr-code/?size=640x640&margin=10&data=' + encodeURIComponent(PHONE_URL);
 document.getElementById('qrurl').textContent = PHONE_URL.replace(/^https?:\/\//,'');
+document.getElementById('qr').onclick = ()=>document.getElementById('qrbig').classList.add('show');
+document.getElementById('qrbig').onclick = ()=>document.getElementById('qrbig').classList.remove('show');
 
 let DIST = [];   // 시군구 [{n,p:[[ring...]],bbox,count}]
 let NAT = null, VIEW = null;
