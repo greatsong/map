@@ -154,6 +154,16 @@ const PHONE_URL = "https://greatsong.github.io/map/";
 const KIND_COLOR = {'초':'#22C55E','중':'#3B82F6','고':'#F59E0B'};
 const kindColor = k => KIND_COLOR[k] || '#9CA3AF';
 const kindOf = name => name.includes('초등학교')?'초' : name.includes('고등학교')?'고' : name.includes('중학교')?'중' : '기타';
+// 학교급 정확 판별: schools.json의 학교급(초/중/고)을 이름@지역으로 찾는다.
+// 이름 추정만으로는 국제학교·영재학교·고등공민학교 등 14곳이 '기타'로 빠진다.
+const KIND = {};
+const kindReady = fetch('schools.json').then(r=>r.json()).then(d=>{
+  (d.schools||[]).forEach(s=>{
+    const k = s[0]+'@'+s[1];
+    if(k in KIND && KIND[k] !== s[4]) KIND[k] = null;   // 같은 이름·지역에 학교급이 다르면 판단 보류
+    else KIND[k] = s[4];
+  });
+}).catch(()=>{});
 
 const mainEl = document.getElementById('main');
 const cv = document.getElementById('map'), ctx = cv.getContext('2d');
@@ -301,7 +311,7 @@ fetch('sigungu.json').then(r=>r.json()).then(d=>{
   });
   NAT={laMin:a0,laMax:a1,loMin:o0,loMax:o1};
   VIEW=buildProj(NAT); render();
-  startPolling();
+  kindReady.then(startPolling);
 }).catch(()=>{
   const em=document.getElementById('empty');
   if(em){ em.style.opacity=1; em.textContent='⚠️ 지도 데이터를 불러오지 못했어요. 새로고침해 주세요.'; }
@@ -314,7 +324,7 @@ async function poll(){
     (d.schools||[]).forEach(r=>{
       const key=r.school+'@'+r.lat+','+r.lon;
       if(seen.has(key)) return; seen.add(key); count++;
-      const kind = kindOf(r.school);
+      const kind = KIND[r.school+'@'+r.region] || kindOf(r.school);
       addPin(r.school, r.region, +r.lat, +r.lon, kind);
       if(kind==='초')cE++; else if(kind==='중')cM++; else if(kind==='고')cH++;
       const dist = districtOf(+r.lat, +r.lon); if(dist) dist.count++;   // 어느 구인지 색칠용 카운트
