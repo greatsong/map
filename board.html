@@ -302,6 +302,9 @@ fetch('sigungu.json').then(r=>r.json()).then(d=>{
   NAT={laMin:a0,laMax:a1,loMin:o0,loMax:o1};
   VIEW=buildProj(NAT); render();
   startPolling();
+}).catch(()=>{
+  const em=document.getElementById('empty');
+  if(em){ em.style.opacity=1; em.textContent='⚠️ 지도 데이터를 불러오지 못했어요. 새로고침해 주세요.'; }
 });
 
 async function poll(){
