@@ -44,6 +44,14 @@
   #ok .region{color:var(--accent);font-weight:800;}
   #ok .meta{margin-top:8px;color:var(--muted);font-weight:700;}
   #ok .look{margin-top:12px;color:var(--muted);}
+  #ok .prep{margin-top:20px;width:100%;max-width:360px;text-align:left;background:var(--card);
+    border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:0 6px 18px var(--shadow);}
+  #ok .prepTitle{font-size:1rem;font-weight:800;color:var(--text);margin-bottom:12px;line-height:1.4;}
+  #ok .prepStep{display:flex;gap:9px;align-items:flex-start;margin:10px 0;font-size:.92rem;line-height:1.5;color:var(--text);}
+  #ok .prepNo{color:var(--accent);font-weight:900;flex-shrink:0;}
+  #ok .prep a{color:var(--accent);font-weight:800;text-decoration:none;}
+  #ok .prepWhy{color:var(--muted);font-size:.82rem;font-weight:600;}
+  #ok .prepCheer{margin-top:12px;color:var(--muted);font-size:.85rem;font-weight:700;text-align:center;}
   #ok .again{margin-top:22px;border:1px solid var(--border);background:#fff;color:var(--text);
     border-radius:12px;padding:.7rem 1.3rem;font-weight:700;cursor:pointer;font-family:inherit;}
   @keyframes pop{0%{transform:scale(0) rotate(-18deg);}60%{transform:scale(1.25) rotate(8deg);}100%{transform:scale(1);}}
@@ -98,6 +106,12 @@
     <div style="margin-top:4px"><span class="region" id="okRegion"></span> 위치에 <b>뿅!</b></div>
     <div class="meta" id="okMeta"></div>
     <div class="look">앞 화면 지도를 확인해 보세요 👀</div>
+    <div class="prep">
+      <div class="prepTitle">🎉 지도에 올라갔어요! 이제 실습 준비를 해요</div>
+      <div class="prepStep"><span class="prepNo">①</span><div><b>깃허브</b> — <a href="https://github.com" target="_blank" rel="noopener">github.com</a> 에 로그인<br><span class="prepWhy">완성한 앱을 인터넷에 올릴 곳이에요</span></div></div>
+      <div class="prepStep"><span class="prepNo">②</span><div><b>AI 서비스</b> — <a href="https://claude.ai" target="_blank" rel="noopener">클로드(claude.ai)</a> 또는 <a href="https://chatgpt.com" target="_blank" rel="noopener">챗지피티(chatgpt.com)</a> 에 로그인<br><span class="prepWhy">코드를 만들어 줄 도구예요</span></div></div>
+      <div class="prepCheer">천천히 준비하시면 돼요. 함께 시작해요! 🌱</div>
+    </div>
     <button class="again" id="again">다른 학교 올리기</button>
   </div>
 
