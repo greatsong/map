@@ -31,20 +31,24 @@ function doPost(e) {
   }
 }
 
-// 접속한 학교 목록 반환 (보드가 GET). 같은 학교는 1번만.
+// 접속한 학교 목록 반환 (보드가 GET). 같은 학교는 1건으로 묶고 제출 인원수(count)를 함께 돌려줍니다.
 function doGet(e) {
+  const order = [];
+  const map = {};
   const sh = getSheet_();
-  const schools = [];
-  const seen = {};
   if (sh.getLastRow() > 1) {
     const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 7).getValues();
     rows.forEach(function (r) {
       const name = String(r[1]);
-      if (!name || seen[name]) return;
-      seen[name] = true;
-      schools.push({ school: name, region: String(r[2]), lat: r[3], lon: r[4], subject: String(r[5]), career: String(r[6]) });
+      if (!name) return;
+      if (!map[name]) {
+        map[name] = { school: name, region: String(r[2]), lat: r[3], lon: r[4], subject: String(r[5]), career: String(r[6]), count: 0 };
+        order.push(name);
+      }
+      map[name].count++;   // 같은 학교에서 여러 명 제출하면 인원수 누적
     });
   }
+  const schools = order.map(function (n) { return map[n]; });
   return out_({ ok: true, schools: schools });
 }
 
