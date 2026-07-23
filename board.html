@@ -179,7 +179,7 @@ document.getElementById('qrbig').onclick = ()=>document.getElementById('qrbig').
 
 let DIST = [];   // 시군구 [{n,p:[[ring...]],bbox,count}]
 let NAT = null, VIEW = null;
-const PINS = [], seen = new Set();
+const PINS = [], pinByName = {};   // 학교명 → 핀(인원수 갱신용)
 let count=0, cE=0,cM=0,cH=0;
 const SUBJ={}, CAREER={};
 const CAREER_ORDER=['1년 미만','1~5년','6~10년','11~15년','16~20년','21~25년','26년 이상'];
@@ -210,7 +210,29 @@ function drawMap(){
     ctx.fill(path,'evenodd'); ctx.stroke(path);
   }
 }
-function repositionPins(){ const P=VIEW.proj; for(const p of PINS){ const [x,y]=P(p.la,p.lo); p.el.style.transform=`translate(${x}px,${y}px)`; } }
+// 가까운 학교끼리 마커가 겹치지 않도록: 화면좌표가 근접한 핀들을 작은 원형으로 분산(offset)
+function computeOffsets(pts){
+  const clusters=[]; const TH=22;   // 22px 안이면 겹친 것으로 보고 한 무리로
+  pts.forEach((pt,i)=>{
+    let c=null;
+    for(const cl of clusters){ const dx=pt[0]-cl.cx, dy=pt[1]-cl.cy; if(dx*dx+dy*dy < TH*TH){ c=cl; break; } }
+    if(!c){ c={members:[],cx:pt[0],cy:pt[1]}; clusters.push(c); }
+    c.members.push(i);
+  });
+  const off=pts.map(()=>[0,0]);
+  for(const cl of clusters){
+    const m=cl.members; if(m.length<2) continue;
+    const r=12+m.length*2.2;
+    m.forEach((idx,k)=>{ const a=2*Math.PI*k/m.length - Math.PI/2; off[idx]=[Math.cos(a)*r, Math.sin(a)*r]; });
+  }
+  return off;
+}
+function repositionPins(){
+  const P=VIEW.proj;
+  const pts=PINS.map(p=>P(p.la,p.lo));
+  const off=computeOffsets(pts);
+  PINS.forEach((p,i)=>{ p.el.style.transform=`translate(${pts[i][0]+off[i][0]}px,${pts[i][1]+off[i][1]}px)`; });
+}
 function render(){ drawMap(); repositionPins(); }
 
 function inRing(lo,la,ring){
@@ -289,14 +311,17 @@ document.getElementById('stats').addEventListener('click', ()=>{ statsExpanded=!
 document.getElementById('letterBtn').onclick=()=>document.getElementById('letter').classList.add('show');
 document.getElementById('letter').onclick=e=>{ if(e.target.id==='letter') e.currentTarget.classList.remove('show'); };
 
-function addPin(school,region,la,lo,kind){
+function labelText(school,count){ return count>1 ? `${school} (${count})` : school; }
+function addPin(school,region,la,lo,kind,count){
   const color=kindColor(kind);
   const el=document.createElement('div'); el.className='pin'; el.style.color=color;
   el.innerHTML=`<div class="vis"><div class="pulse" style="color:${color}"></div><div class="ripple"></div>`+
-    `<div class="dot" style="background:${color}"></div><div class="lab">${school}</div></div>`;
+    `<div class="dot" style="background:${color}"></div><div class="lab">${labelText(school,count)}</div></div>`;
   pinsEl.appendChild(el);
-  const p={el,la,lo}; PINS.push(p);
+  const p={el,la,lo,school,region,count,labEl:el.querySelector('.lab')}; PINS.push(p);
+  el.title = `${school} · ${region}` + (count>1 ? ` · ${count}명 합류` : '');
   if(VIEW){ const [x,y]=VIEW.proj(la,lo); el.style.transform=`translate(${x}px,${y}px)`; }
+  return p;
 }
 
 fetch('sigungu.json').then(r=>r.json()).then(d=>{
@@ -322,10 +347,19 @@ async function poll(){
     const d = await (await fetch(API_URL)).json();
     const freshItems=[];
     (d.schools||[]).forEach(r=>{
-      const key=r.school+'@'+r.lat+','+r.lon;
-      if(seen.has(key)) return; seen.add(key); count++;
+      const cnt = +r.count || 1;
+      const existing = pinByName[r.school];
+      if(existing){   // 이미 있는 학교 — 인원수만 갱신
+        if(cnt !== existing.count){
+          existing.count = cnt;
+          existing.labEl.textContent = labelText(r.school, cnt);
+          existing.el.title = `${r.school} · ${r.region}` + (cnt>1 ? ` · ${cnt}명 합류` : '');
+        }
+        return;
+      }
+      count++;
       const kind = KIND[r.school+'@'+r.region] || kindOf(r.school);
-      addPin(r.school, r.region, +r.lat, +r.lon, kind);
+      pinByName[r.school] = addPin(r.school, r.region, +r.lat, +r.lon, kind, cnt);
       if(kind==='초')cE++; else if(kind==='중')cM++; else if(kind==='고')cH++;
       const dist = districtOf(+r.lat, +r.lon); if(dist) dist.count++;   // 어느 구인지 색칠용 카운트
       if(r.subject) SUBJ[r.subject]=(SUBJ[r.subject]||0)+1;
