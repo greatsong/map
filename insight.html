@@ -68,20 +68,23 @@
   </div>
 
 <script>
-const DATA_URL = "https://greatsong.github.io/modeudata-population-web/population_2026_05.csv";
+const DATA_URL = "https://raw.githubusercontent.com/greatsong/modudata/main/data/population_latest.csv";
 let HEADER=[], REGIONS=[], BYNAME={}, RANK14=[], N14=0;
-const num=s=>parseInt(s,10)||0;
+const num=s=>parseInt(String(s).replace(/[^0-9-]/g,''),10)||0;   // 따옴표·천단위 쉼표 제거
+function parseCSV(line){const o=[];let c='',q=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(q&&line[i+1]==='"'){c+='"';i++;}else q=!q;}else if(ch===','&&!q){o.push(c);c='';}else c+=ch;}o.push(c);return o;}
+const cleanName=s=>s.replace(/\s*\(\d+\)\s*$/,'').replace(/\s+/g,' ').trim();
+const getCode=s=>{const m=s.match(/\((\d+)\)/);return m?m[1]:'';};
 const BANDS=[[0,9],[10,19],[20,29],[30,39],[40,49],[50,59],[60,69],[70,79],[80,89],[90,150]];
 
-function ageArr(cells){
+function ageArr(cells){   // 전체(계) 연령 분포
   const a=new Array(101).fill(0);
-  for(let i=2;i<HEADER.length;i++){const m=HEADER[i].match(/_(\d+)세/);if(!m)continue;a[Math.min(100,+m[1])]+=num(cells[i]);}
+  for(let i=1;i<HEADER.length;i++){if(!HEADER[i].includes('_계_'))continue;const m=HEADER[i].match(/_(\d+)세/);if(!m)continue;a[Math.min(100,+m[1])]+=num(cells[i]);}
   return a;
 }
 function ageBySex(cells){
   const m=new Array(101).fill(0),f=new Array(101).fill(0);
-  for(let i=2;i<HEADER.length;i++){const mm=HEADER[i].match(/_(\d+)세/);if(!mm)continue;const a=Math.min(100,+mm[1]);
-    if(HEADER[i].startsWith('남자'))m[a]+=num(cells[i]);else f[a]+=num(cells[i]);}
+  for(let i=1;i<HEADER.length;i++){const mm=HEADER[i].match(/_(\d+)세/);if(!mm)continue;const a=Math.min(100,+mm[1]);
+    if(HEADER[i].includes('_남_'))m[a]+=num(cells[i]);else if(HEADER[i].includes('_여_'))f[a]+=num(cells[i]);}
   return {m,f};
 }
 const rsum=(a,lo,hi)=>{let s=0;for(let i=lo;i<=hi;i++)s+=a[i];return s;};
@@ -148,15 +151,17 @@ document.getElementById('aibtn').onclick=()=>{
 };
 
 (async()=>{
-  const text=await(await fetch(DATA_URL)).text();
+  const buf=await(await fetch(DATA_URL)).arrayBuffer();
+  const text=new TextDecoder('euc-kr').decode(buf);   // 행안부 원본은 cp949 인코딩
   const lines=text.trim().split(/\r?\n/);
-  HEADER=lines[0].replace(/^﻿/,'').split(',');
+  HEADER=parseCSV(lines[0]);
   const dl=document.getElementById('regions');
   lines.slice(1).forEach(line=>{
-    const c=line.split(','); const name=c[0]; const age=ageArr(c); const total=age.reduce((x,y)=>x+y,0);
+    const c=parseCSV(line); const name=cleanName(c[0]); const code=getCode(c[0]);
+    const age=ageArr(c); const total=age.reduce((x,y)=>x+y,0);
     if(!name||total<1) return;
     const ratio=age.map(v=>v/total);
-    const isDong = c[1] && c[1].length>=10 && c[1].slice(5)!=='00000';
+    const isDong = code.length>=10 && code.slice(5)!=='00000';
     BYNAME[name]={cells:c, sex:ageBySex(c), age, total, ratio, isDong};
     const o=document.createElement('option'); o.value=name; dl.appendChild(o);
     if(isDong && total>3000) REGIONS.push(name);
@@ -166,7 +171,7 @@ document.getElementById('aibtn').onclick=()=>{
   N14=RANK14.length;
   RANK14.forEach((n,i)=>BYNAME[n].rank14=i+1);
   document.getElementById('q').disabled=false;
-  document.getElementById('foot').textContent=`데이터: 행정안전부 주민등록 인구(2026.05) · 전국 ${REGIONS.length.toLocaleString()}개 동 분석`;
+  document.getElementById('foot').textContent=`데이터: 행정안전부 주민등록 인구(매월 자동 갱신) · 전국 ${REGIONS.length.toLocaleString()}개 동 분석`;
   const q=document.getElementById('q');
   q.value='서울특별시 강남구 대치1동'; if(BYNAME[q.value]) analyze(q.value);
   q.addEventListener('input',()=>{ if(BYNAME[q.value]) analyze(q.value); });
