@@ -70,20 +70,18 @@
         <div style="text-align:left"><b id="chName"></b><br><span class="rg" id="chRegion"></span></div>
         <a id="reSearch">✎ 다시 검색</a>
       </div>
-      <label>과목 (선택하거나 직접 입력)</label>
-      <input id="subject" list="subjects" placeholder="예: 수학 · 전과목 · 직접 입력">
-      <datalist id="subjects">
-        <option value="전과목"></option>
-        <option value="국어"></option><option value="영어"></option><option value="수학"></option>
-        <option value="사회"></option><option value="과학"></option><option value="도덕/윤리"></option>
-        <option value="역사"></option><option value="지리"></option><option value="일반사회"></option>
-        <option value="물리"></option><option value="화학"></option><option value="생명과학"></option>
-        <option value="지구과학"></option><option value="기술·가정"></option><option value="정보·컴퓨터"></option>
-        <option value="체육"></option><option value="음악"></option><option value="미술"></option>
-        <option value="한문"></option><option value="제2외국어"></option><option value="진로진학"></option>
-        <option value="특수교육"></option><option value="유아교육"></option><option value="보건"></option>
-        <option value="영양"></option><option value="사서"></option><option value="전문상담"></option>
-      </datalist>
+      <label>과목 (드롭다운에서 선택하거나 직접 입력)</label>
+      <select id="subjectSel">
+        <option value="">선택하세요</option>
+        <option>국어</option><option>수학</option><option>영어</option>
+        <option>사회</option><option>역사</option><option>도덕</option>
+        <option>과학</option><option>정보</option><option>기술가정</option>
+        <option>음악</option><option>미술</option><option>체육</option>
+        <option>영양(급식)</option><option>보건</option><option>상담</option>
+        <option>특수</option><option>전과목</option>
+        <option value="__custom__">✎ 직접 입력…</option>
+      </select>
+      <input id="subject" placeholder="과목을 직접 입력" style="display:none;margin-top:8px;">
       <label>교육경력</label>
       <select id="career">
         <option value="">선택</option>
@@ -140,9 +138,17 @@ function choose(s){
 }
 $('reSearch').onclick = ()=>{ $('form').style.display='none'; $('search').style.display='block'; $('q').focus(); };
 
+// 과목: 드롭다운 선택 / '직접 입력' 고르면 텍스트칸 노출
+$('subjectSel').addEventListener('change', ()=>{
+  const custom = $('subjectSel').value === '__custom__';
+  $('subject').style.display = custom ? 'block' : 'none';
+  if(custom){ $('subject').value=''; $('subject').focus(); }
+});
+
 $('submitBtn').onclick = async ()=>{
   if(!chosen) return;
-  const subject = $('subject').value.trim();
+  const sel = $('subjectSel').value;
+  const subject = (sel === '__custom__') ? $('subject').value.trim() : sel;
   const career  = $('career').value;
   const btn = $('submitBtn'), orig = btn.textContent;
   btn.disabled = true; btn.textContent = '지도에 올리는 중… ⏳';   // 로딩 안내(전송에 1~2초 걸림)
@@ -170,7 +176,9 @@ $('q').addEventListener('input', renderList);
 $('again').onclick = ()=>{
   $('ok').classList.remove('show'); chosen=null;
   $('form').style.display='none'; $('search').style.display='block';
-  $('q').value=''; $('list').innerHTML=''; $('subject').value=''; $('career').value=''; $('q').focus();
+  $('q').value=''; $('list').innerHTML='';
+  $('subjectSel').value=''; $('subject').value=''; $('subject').style.display='none';
+  $('career').value=''; $('q').focus();
 };
 </script>
 </body>
