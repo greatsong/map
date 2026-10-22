@@ -159,7 +159,7 @@ const PREV = new URLSearchParams(location.search).has('prev');
 const PHONE_URL = "https://greatsong.github.io/map/" + (PREV ? "?prev" : "");
 if(PREV){
   document.title = '우리 선생님들의 이전 학교 🗺️';
-  document.getElementById('title').innerHTML = '🤝 우리 선생님들은 <span class="a">어느 학교에서 오셨을까요?</span> 🗺️✨';
+  document.getElementById('title').innerHTML = '🤝 상도중 전에 <span class="a">어떤 학교에 근무하셨었나요?!</span> 🗺️✨';
   document.getElementById('nLabel').textContent = '개 학교에서 오셨어요!';
   document.getElementById('empty').innerHTML = '📱 오른쪽 QR을 스캔해<br>이전 학교를 지도에 올려주세요!';
   document.getElementById('qrbigHead').textContent = '📱 QR을 찍어 이전 학교를 지도에 올려요';
@@ -363,9 +363,18 @@ async function poll(){
   try{
     const d = await (await fetch(API_URL)).json();
     const freshItems=[];
+    // 과목·경력 통계는 학교가 아니라 사람마다 센다(새 서버는 subjects·careers 목록을 준다)
+    const S2={}, C2={};
+    (d.schools||[]).forEach(r=>{
+      (r.subjects||(r.subject?[r.subject]:[])).forEach(v=>{ if(v) S2[v]=(S2[v]||0)+1; });
+      (r.careers||(r.career?[r.career]:[])).forEach(v=>{ if(v) C2[v]=(C2[v]||0)+1; });
+    });
+    const statsChanged = JSON.stringify(S2)!==JSON.stringify(SUBJ) || JSON.stringify(C2)!==JSON.stringify(CAREER);
+    if(statsChanged){ for(const k in SUBJ) delete SUBJ[k]; for(const k in CAREER) delete CAREER[k]; Object.assign(SUBJ,S2); Object.assign(CAREER,C2); }
     (d.schools||[]).forEach(r=>{
       const cnt = +r.count || 1;
-      const existing = pinByName[r.school];
+      const key = r.school + '@' + r.region;   // 이름이 같은 다른 지역 학교와 섞이지 않게
+      const existing = pinByName[key];
       if(existing){   // 이미 있는 학교 — 인원수만 갱신
         if(cnt !== existing.count){
           existing.count = cnt;
@@ -376,11 +385,9 @@ async function poll(){
       }
       count++;
       const kind = KIND[r.school+'@'+r.region] || kindOf(r.school);
-      pinByName[r.school] = addPin(r.school, r.region, +r.lat, +r.lon, kind, cnt);
+      pinByName[key] = addPin(r.school, r.region, +r.lat, +r.lon, kind, cnt);
       if(kind==='초')cE++; else if(kind==='중')cM++; else if(kind==='고')cH++;
       const dist = districtOf(+r.lat, +r.lon); if(dist) dist.count++;   // 어느 구인지 색칠용 카운트
-      if(r.subject) SUBJ[r.subject]=(SUBJ[r.subject]||0)+1;
-      if(r.career)  CAREER[r.career]=(CAREER[r.career]||0)+1;
       freshItems.push(r);
     });
     if(freshItems.length){
@@ -393,7 +400,7 @@ async function poll(){
       render();                                  // 지도(구 색칠) + 핀 재배치
       renderStats();                             // 과목·경력 통계 갱신
       enqueueTicker(freshItems);                 // 동시 도착도 순차로 다 알림
-    }
+    } else if(statsChanged){ renderStats(); }   // 이미 있는 학교에 사람만 늘어난 경우
   }catch(e){ /* 다음 폴링에서 재시도 */ }
 }
 function startPolling(){ poll(); setInterval(poll, 3500); }

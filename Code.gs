@@ -32,6 +32,7 @@ function doPost(e) {
 }
 
 // 접속한 학교 목록 반환 (보드가 GET). 같은 학교는 1건으로 묶고 제출 인원수(count)를 함께 돌려줍니다.
+// 이름이 같은 다른 지역 학교(예: 상도중학교 서울 동작구·경기 부천)가 섞이지 않게 '이름@지역'으로 묶습니다.
 function doGet(e) {
   const order = [];
   const map = {};
@@ -41,11 +42,14 @@ function doGet(e) {
     rows.forEach(function (r) {
       const name = String(r[1]);
       if (!name) return;
-      if (!map[name]) {
-        map[name] = { school: name, region: String(r[2]), lat: r[3], lon: r[4], subject: String(r[5]), career: String(r[6]), count: 0 };
-        order.push(name);
+      const key = name + '@' + String(r[2]);
+      if (!map[key]) {
+        map[key] = { school: name, region: String(r[2]), lat: r[3], lon: r[4], subject: String(r[5]), career: String(r[6]), count: 0, subjects: [], careers: [] };
+        order.push(key);
       }
-      map[name].count++;   // 같은 학교에서 여러 명 제출하면 인원수 누적
+      map[key].count++;   // 같은 학교에서 여러 명 제출하면 인원수 누적
+      if (r[5]) map[key].subjects.push(String(r[5]));   // 통계는 사람마다 센다
+      if (r[6]) map[key].careers.push(String(r[6]));
     });
   }
   const schools = order.map(function (n) { return map[n]; });
