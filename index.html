@@ -62,8 +62,8 @@
 <body>
   <div class="wrap">
     <div class="emoji">🗺️📍</div>
-    <h1>우리 학교를 전국 지도에!</h1>
-    <p class="sub">학교를 찾고 과목·경력을 알려주면<br>앞 화면 지도에 <b>뿅!</b> 나타나요</p>
+    <h1 id="title">우리 학교를 전국 지도에!</h1>
+    <p class="sub" id="lead">학교를 찾고 과목·경력을 알려주면<br>앞 화면 지도에 <b>뿅!</b> 나타나요</p>
 
     <!-- 1) 학교 검색 -->
     <div id="search">
@@ -117,6 +117,15 @@
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbyJkRn8dWVTU40QbWEurQVczygBRVYWhVAalIFc_etw6jvzfPjLd0uRuDuuQAQ_DoXXUQ/exec";
+
+// 주소에 ?prev가 붙으면 '이전 학교'를 묻는다(한 학교 교내 연수용). 문구만 바뀌고 저장 방식은 같다.
+const PREV = new URLSearchParams(location.search).has('prev');
+if(PREV){
+  document.title = '이전 학교를 전국 지도에! 🗺️';
+  document.getElementById('title').textContent = '이전 학교를 전국 지도에!';
+  document.getElementById('lead').innerHTML = '바로 전에 근무하신 학교를 찾고<br>과목·경력을 알려주면 앞 화면 지도에 <b>뿅!</b> 나타나요'
+    + '<br><span style="font-size:.85em;opacity:.75">첫 학교라면 지금 학교를 올려 주세요</span>';
+}
 
 let SCHOOLS = [], chosen = null;
 const $ = id => document.getElementById(id);

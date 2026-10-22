@@ -107,8 +107,8 @@
 </head>
 <body>
   <div id="head">
-    <h1>🤝 지금 이 순간! 이곳에는 어떤 선생님들과 <span class="a">함께하고 있을까요?</span> 🗺️✨</h1>
-    <div class="stat"><span class="n" id="nSchool">0</span><span class="lb">개 학교 접속!</span></div>
+    <h1 id="title">🤝 지금 이 순간! 이곳에는 어떤 선생님들과 <span class="a">함께하고 있을까요?</span> 🗺️✨</h1>
+    <div class="stat"><span class="n" id="nSchool">0</span><span class="lb" id="nLabel">개 학교 접속!</span></div>
     <div class="legend">
       <div class="it"><span class="sw" style="background:var(--c-e)"></span>초 <span class="cnt" id="cE">0</span></div>
       <div class="it"><span class="sw" style="background:var(--c-m)"></span>중 <span class="cnt" id="cM">0</span></div>
@@ -142,9 +142,9 @@
       <div class="u" id="qrurl"></div>
     </div>
     <div id="qrbig">
-      <div class="h">📱 QR을 찍어 우리 학교를 지도에 올려요</div>
+      <div class="h" id="qrbigHead">📱 QR을 찍어 우리 학교를 지도에 올려요</div>
       <img id="qrbigimg" alt="QR 크게">
-      <div class="u">greatsong.github.io/map</div>
+      <div class="u" id="qrbigUrl">greatsong.github.io/map</div>
       <div class="x">(화면을 누르면 닫혀요)</div>
     </div>
   </div>
@@ -152,8 +152,20 @@
 <script>
 /* ===== 연결 정보 ===== */
 const API_URL   = "https://script.google.com/macros/s/AKfycbyJkRn8dWVTU40QbWEurQVczygBRVYWhVAalIFc_etw6jvzfPjLd0uRuDuuQAQ_DoXXUQ/exec";
-const PHONE_URL = "https://greatsong.github.io/map/";
 /* ==================== */
+
+// 주소에 ?prev가 붙으면 '이전 학교' 모드(한 학교 교내 연수용). QR도 ?prev 주소로 바뀐다.
+const PREV = new URLSearchParams(location.search).has('prev');
+const PHONE_URL = "https://greatsong.github.io/map/" + (PREV ? "?prev" : "");
+if(PREV){
+  document.title = '우리 선생님들의 이전 학교 🗺️';
+  document.getElementById('title').innerHTML = '🤝 우리 선생님들은 <span class="a">어느 학교에서 오셨을까요?</span> 🗺️✨';
+  document.getElementById('nLabel').textContent = '개 학교에서 오셨어요!';
+  document.getElementById('empty').innerHTML = '📱 오른쪽 QR을 스캔해<br>이전 학교를 지도에 올려주세요!';
+  document.getElementById('qrbigHead').textContent = '📱 QR을 찍어 이전 학교를 지도에 올려요';
+  document.getElementById('qrbigUrl').textContent = 'greatsong.github.io/map/?prev';
+  document.getElementById('letterBtn').style.display = 'none';   // 당곡고 동료 초대장은 다른 학교 연수에 맞지 않아 숨긴다
+}
 
 const KIND_COLOR = {'초':'#22C55E','중':'#3B82F6','고':'#F59E0B'};
 const kindColor = k => KIND_COLOR[k] || '#9CA3AF';
@@ -284,9 +296,10 @@ function pumpTicker(){
   tActive=true;
   const t=document.getElementById('ticker');
   let html;
-  if(tq.length>4){ const n=tq.length, f=tq[0].school; tq.length=0; html=`🎉 ${f} 외 ${n-1}곳 동시 합류! 🎉`; }
+  if(tq.length>4){ const n=tq.length, f=tq[0].school; tq.length=0; html = PREV ? `🎉 ${f} 외 ${n-1}곳에서 오셨어요! 🎉` : `🎉 ${f} 외 ${n-1}곳 동시 합류! 🎉`; }
   else { const r=tq.shift(); const extra=[r.region,r.subject,r.career].filter(Boolean).join(' · ');
-    html=`🎉 ${r.school} <span class="rg">${extra?'· '+extra:''}</span> 합류!`; }
+    html = PREV ? `🎉 ${r.school}에서 오신 선생님 <span class="rg">${extra?'· '+extra:''}</span>`
+                 : `🎉 ${r.school} <span class="rg">${extra?'· '+extra:''}</span> 합류!`; }
   t.innerHTML=html; t.classList.add('show');
   clearTimeout(pumpTicker._h); pumpTicker._h=setTimeout(()=>t.classList.remove('show'),1500);
   setTimeout(()=>{ tActive=false; pumpTicker(); }, 1700);
@@ -323,7 +336,7 @@ function addPin(school,region,la,lo,kind,count){
     `<div class="dot" style="background:${color}"></div><div class="lab">${labelText(school,count)}</div></div>`;
   pinsEl.appendChild(el);
   const p={el,la,lo,school,region,count,labEl:el.querySelector('.lab')}; PINS.push(p);
-  el.title = `${school} · ${region}` + (count>1 ? ` · ${count}명 합류` : '');
+  el.title = `${school} · ${region}` + (count>1 ? ` · ${count}명` + (PREV ? '' : ' 합류') : '');
   if(VIEW){ const [x,y]=VIEW.proj(la,lo); el.style.transform=`translate(${x}px,${y}px)`; }
   return p;
 }
@@ -357,7 +370,7 @@ async function poll(){
         if(cnt !== existing.count){
           existing.count = cnt;
           existing.labEl.textContent = labelText(r.school, cnt);
-          existing.el.title = `${r.school} · ${r.region}` + (cnt>1 ? ` · ${cnt}명 합류` : '');
+          existing.el.title = `${r.school} · ${r.region}` + (cnt>1 ? ` · ${cnt}명` + (PREV ? '' : ' 합류') : '');
         }
         return;
       }
