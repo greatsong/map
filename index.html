@@ -123,8 +123,8 @@ const PREV = new URLSearchParams(location.search).has('prev');
 if(PREV){
   document.title = '이전 학교를 전국 지도에! 🗺️';
   document.getElementById('title').textContent = '이전 학교를 전국 지도에!';
-  document.getElementById('lead').innerHTML = '바로 전에 근무하신 학교를 찾고<br>과목·경력을 알려주면 앞 화면 지도에 <b>뿅!</b> 나타나요'
-    + '<br><span style="font-size:.85em;opacity:.75">첫 학교라면 지금 학교를 올려 주세요</span>';
+  document.getElementById('lead').innerHTML = '이전에 근무하셨던 학교를 입력해주세요<br>(신규 선생님들은 상도중을 선택하시면 됩니다!)'
+    + '<br><span style="font-size:.85em;opacity:.75">상도중은 검색 결과에서 서울특별시 동작구를 고르세요</span>';
 }
 
 let SCHOOLS = [], chosen = null;
