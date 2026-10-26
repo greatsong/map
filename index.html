@@ -138,11 +138,17 @@ fetch('schools.json').then(r=>r.json()).then(d=>{
   $('hint').textContent = `전국 ${SCHOOLS.length.toLocaleString()}개 학교 중에서 검색해요` + note;
 }).catch(()=>err('학교 데이터를 못 불러왔어요.'));
 
+const HOME = ['상도중학교','서울특별시 동작구'];   // ?prev(교내 연수): 연수 학교를 검색 결과 맨 위로
 function search(q){
   q = q.trim(); if(q.length < 2) return [];
-  const st=[], inc=[];
-  for(const s of SCHOOLS){ const i=s[0].indexOf(q); if(i===0)st.push(s); else if(i>0)inc.push(s); if(st.length>=8)break; }
-  return st.concat(inc).slice(0,8);
+  const st=[], inc=[]; let home=null;
+  const wantHome = PREV && HOME[0].includes(q);
+  for(const s of SCHOOLS){
+    if(wantHome && s[0]===HOME[0] && s[1]===HOME[1]){ home=s; continue; }
+    const i=s[0].indexOf(q); if(i===0)st.push(s); else if(i>0)inc.push(s);
+    if(st.length>=8 && (!wantHome || home)) break;
+  }
+  return (home?[home]:[]).concat(st,inc).slice(0,8);
 }
 function renderList(){
   const list = $('list'); list.innerHTML = '';
