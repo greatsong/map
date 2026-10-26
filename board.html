@@ -97,6 +97,23 @@
   #qrbig{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;
     background:rgba(255,253,247,.98);cursor:pointer;}
   #qrbig.show{display:flex;}
+  /* 과목·교육경력 크게 보기 */
+  #statsBig{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(255,253,247,.98);cursor:pointer;padding:4vh 5vw;}
+  #statsBig.show{display:flex;animation:fadein .3s;}
+  #statsBig .sbWrap{display:grid;grid-template-columns:1fr 1fr;gap:5vw;width:min(1400px,100%);}
+  #statsBig h3{font-size:clamp(1.3rem,2.6vw,2.3rem);font-weight:900;margin:0 0 2.2vh;color:var(--text);}
+  .bar3{display:flex;align-items:center;gap:14px;margin:1.2vh 0;font-size:clamp(1rem,2vw,1.7rem);}
+  .bar3 .bn{width:clamp(90px,10vw,180px);font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bar3 .bt{flex:1;height:clamp(16px,2.8vh,32px);background:rgba(0,0,0,.06);border-radius:99px;overflow:hidden;}
+  .bar3 .bf{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--accent));border-radius:99px;transition:width .7s cubic-bezier(.22,.61,.36,1);min-width:6px;}
+  .bar3 .bc{width:2.2em;text-align:right;font-weight:900;color:var(--accent);}
+  #statsBig .x{margin-top:3vh;color:var(--muted);font-size:.95rem;}
+  @media(max-width:700px){ #statsBig .sbWrap{grid-template-columns:1fr;} }
+  /* 교내 연수(?prev): 지도 다음은 인트로 */
+  #introBtn{position:absolute;right:20px;top:14px;z-index:6;display:none;text-decoration:none;font-weight:900;font-size:1rem;
+    color:#fff;background:var(--accent);padding:10px 18px;border-radius:99px;box-shadow:0 6px 18px var(--shadow);}
+  #introBtn:hover{filter:brightness(1.06);}
   #qrbig .h{font-weight:900;font-size:clamp(1.1rem,2.6vw,2rem);color:var(--text);margin-bottom:16px;}
   #qrbig img{width:min(66vmin,620px);height:min(66vmin,620px);border-radius:18px;box-shadow:0 20px 60px var(--shadow);}
   #qrbig .u{margin-top:16px;font-weight:900;font-size:clamp(1.1rem,2.4vw,1.8rem);color:var(--accent);}
@@ -145,8 +162,16 @@
       <div class="h" id="qrbigHead">📱 QR을 찍어 우리 학교를 지도에 올려요</div>
       <img id="qrbigimg" alt="QR 크게">
       <div class="u" id="qrbigUrl">greatsong.github.io/map</div>
+      <div class="x" id="qrbigX">(화면을 누르면 닫혀요)</div>
+    </div>
+    <div id="statsBig">
+      <div class="sbWrap">
+        <div><h3>📚 과목</h3><div id="subjBig"></div></div>
+        <div><h3>🎖 교육경력</h3><div id="careerBig"></div></div>
+      </div>
       <div class="x">(화면을 누르면 닫혀요)</div>
     </div>
+    <a id="introBtn" href="https://greatsong.github.io/workshop/bit-world.html?prev">인트로 →</a>
   </div>
 
 <script>
@@ -165,6 +190,10 @@ if(PREV){
   document.getElementById('qrbigHead').textContent = '📱 QR을 찍어 이전 학교를 지도에 올려요';
   document.getElementById('qrbigUrl').textContent = 'greatsong.github.io/map/?prev';
   document.getElementById('letterBtn').style.display = 'none';   // 당곡고 동료 초대장은 다른 학교 연수에 맞지 않아 숨긴다
+  // 진행 순서: QR → 지도 보기 → 인트로 → 워크샵. 처음에는 QR을 크게 띄우고, 누르면 지도가 나온다
+  document.getElementById('qrbig').classList.add('show');
+  document.getElementById('qrbigX').textContent = '(화면을 누르면 지도를 봐요)';
+  document.getElementById('introBtn').style.display = 'block';
 }
 
 const KIND_COLOR = {'초':'#22C55E','중':'#3B82F6','고':'#F59E0B'};
@@ -304,26 +333,44 @@ function pumpTicker(){
   clearTimeout(pumpTicker._h); pumpTicker._h=setTimeout(()=>t.classList.remove('show'),1500);
   setTimeout(()=>{ tActive=false; pumpTicker(); }, 1700);
 }
-// 오신 분들 통계(과목·교육경력) — 기본은 숫자, 클릭하면 막대 그래프
-let statsExpanded=false;
-function drawBars(node,entries){
-  if(!entries.length){ node.innerHTML='<div class="none2">아직 없음</div>'; return; }
-  const m=Math.max(1,...entries.map(e=>e[1]));
-  node.innerHTML=entries.map(([k,v])=>`<div class="bar2"><span class="bn">${k}</span><span class="bt"><span class="bf" style="width:${v/m*100}%"></span></span><span class="bc">${v}</span></div>`).join('');
-}
+// 오신 분들 통계(과목·교육경력) — 작은 상자는 숫자, 누르면 화면 가득 큰 막대 그래프
 function drawChips(node,entries){
   if(!entries.length){ node.innerHTML='<div class="none2">아직 없음</div>'; return; }
   node.innerHTML='<div class="chips3">'+entries.map(([k,v])=>`<span class="chip3">${k} <b>${v}</b></span>`).join('')+'</div>';
 }
-function renderStats(){
+function drawBig(node,entries,zero){
+  if(!entries.length){ node.innerHTML='<div class="none2" style="font-size:1.2rem">아직 없음</div>'; return; }
+  const m=Math.max(1,...entries.map(e=>e[1]));
+  node.innerHTML=entries.map(([k,v])=>`<div class="bar3"><span class="bn">${k}</span><span class="bt"><span class="bf" style="width:${zero?0:v/m*100}%"></span></span><span class="bc">${v}</span></div>`).join('');
+}
+const statsBig=document.getElementById('statsBig');
+function renderStats(zero){
   const subj=Object.entries(SUBJ).sort((a,b)=>b[1]-a[1]);
   const car=CAREER_ORDER.filter(k=>CAREER[k]).map(k=>[k,CAREER[k]]);
-  const f = statsExpanded ? drawBars : drawChips;
-  f(document.getElementById('subjBars'), subj.slice(0, statsExpanded?8:6));
-  f(document.getElementById('careerBars'), car);
-  document.getElementById('sHint').textContent = statsExpanded ? '(클릭: 숫자로 접기)' : '(클릭: 그래프로 보기)';
+  drawChips(document.getElementById('subjBars'), subj.slice(0,6));
+  drawChips(document.getElementById('careerBars'), car);
+  document.getElementById('sHint').textContent = '(클릭: 그래프 크게 보기)';
+  if(statsBig.classList.contains('show')){
+    if(zero){ drawBig(document.getElementById('subjBig'), subj.slice(0,10), true); drawBig(document.getElementById('careerBig'), car, true); }
+    else { // 막대 너비만 바꿔 자라나는 움직임을 살린다
+      [['subjBig',subj.slice(0,10)],['careerBig',car]].forEach(([id,en])=>{ const node=document.getElementById(id), rows=node.querySelectorAll('.bar3');
+        if(rows.length!==en.length||[...rows].some((r,i)=>r.querySelector('.bn').textContent!==en[i][0])) drawBig(node,en,true);
+        const m=Math.max(1,...en.map(e=>e[1]));
+        node.querySelectorAll('.bar3').forEach((r,i)=>{ r.querySelector('.bf').style.width=(en[i][1]/m*100)+'%'; r.querySelector('.bc').textContent=en[i][1]; }); }); }
+  }
 }
-document.getElementById('stats').addEventListener('click', ()=>{ statsExpanded=!statsExpanded; renderStats(); });
+document.getElementById('stats').addEventListener('click', ()=>{ statsBig.classList.add('show'); renderStats(true); setTimeout(()=>renderStats(),40); });
+statsBig.onclick=()=>statsBig.classList.remove('show');
+// 발표 리모컨·키보드: → 는 열린 화면을 닫고, 지도에서 한 번 더 누르면(?prev) 인트로로. ← 는 QR을 다시 크게
+addEventListener('keydown',e=>{
+  const qb=document.getElementById('qrbig');
+  if(['ArrowRight','PageDown',' '].includes(e.key)){ e.preventDefault();
+    if(qb.classList.contains('show')) qb.classList.remove('show');
+    else if(statsBig.classList.contains('show')) statsBig.classList.remove('show');
+    else if(PREV) location.href=document.getElementById('introBtn').href; }
+  else if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); statsBig.classList.remove('show'); qb.classList.add('show'); }
+  else if(e.key==='Escape'){ qb.classList.remove('show'); statsBig.classList.remove('show'); document.getElementById('letter').classList.remove('show'); }
+});
 // 초대장(편지)
 document.getElementById('letterBtn').onclick=()=>document.getElementById('letter').classList.add('show');
 document.getElementById('letter').onclick=e=>{ if(e.target.id==='letter') e.currentTarget.classList.remove('show'); };
